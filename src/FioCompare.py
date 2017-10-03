@@ -2,8 +2,8 @@ OK = '\033[92m'
 FAIL = '\033[91m'
 ENDC = '\033[0m'
 
-higher_is_better = [ 'iops', 'io_kbytes', 'bw' ]
-lower_is_better = [ 'lat_ns_min', 'lat_ns_max' ]
+default_keys = [ 'iops', 'io_kbytes', 'bw' ]
+latency_keys = [ 'lat_ns_min', 'lat_ns_max' ]
 io_ops = ['read', 'write', 'trim' ]
 
 def _fuzzy_compare(a, b, fuzzy):
@@ -19,9 +19,9 @@ def _fuzzy_compare(a, b, fuzzy):
         return val;
     return 0
 
-def _compare_jobs(ijob, njob, fuzz):
+def _compare_jobs(ijob, njob, latency, fuzz):
     failed = 0
-    for k in higher_is_better:
+    for k in default_keys:
         for io in io_ops:
             key = "{}_{}".format(io, k)
             comp = _fuzzy_compare(ijob[key], njob[key], fuzz)
@@ -34,7 +34,9 @@ def _compare_jobs(ijob, njob, fuzz):
                 outstr = "    {} improved: old {} new {} {}%".format(key,
                             ijob[key], njob[key], comp)
                 print(OK + outstr + ENDC)
-    for k in lower_is_better:
+    for k in latency_keys:
+        if not latency:
+            break
         for io in io_ops:
             key = "{}_{}".format(io, k)
             comp = _fuzzy_compare(ijob[key], njob[key], fuzz)
@@ -87,13 +89,13 @@ def default_merge(data):
     for job in data['jobs']:
         merge_job['sys_cpu'] += job['sys_cpu']
         for io in io_ops:
-            for k in higher_is_better:
+            for k in default_keys:
                 key = "{}_{}".format(io, k)
                 if key not in merge_job:
                     merge_job[key] = job[key]
                 else:
                     merge_job[key] += job[key]
-            for k in lower_is_better:
+            for k in latency_keys:
                 key = "{}_{}".format(io, k)
                 if key not in merge_job:
                     merge_job[key] = job[key]
@@ -101,10 +103,10 @@ def default_merge(data):
                     merge_job[key] = job[key]
     return merge_job
 
-def compare_fiodata(initial, data, merge_func=default_merge, fuzz=5):
+def compare_fiodata(initial, data, latency, merge_func=default_merge, fuzz=5):
     failed  = 0
     if merge_func is None:
         return compare_individual_jobs(initial, data, fuzz)
     ijob = merge_func(initial)
     njob = merge_func(data)
-    return _compare_jobs(ijob, njob, fuzz)
+    return _compare_jobs(ijob, njob, latency, fuzz)

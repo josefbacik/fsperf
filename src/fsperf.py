@@ -31,7 +31,8 @@ def run_command(cmd):
     print("Command '{}' failed to run".format(cmd))
     sys.exit(1)
 
-def run_test(config, result_data, section, test):
+def run_test(config, result_data, args, test):
+    section = args.config
     testname = test[:-4]
     compare = result_data.load_last(testname, section)
     print("Running {}".format(testname))
@@ -52,12 +53,13 @@ def run_test(config, result_data, section, test):
     result_data.insert_result(data)
     if compare is None:
         return 0
-    return FioCompare.compare_fiodata(compare, data)
+    return FioCompare.compare_fiodata(compare, data, args.latency)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', type=str, default='default',
                     help="Configuration to use to run the tests")
-
+parser.add_argument('-l', '--latency', action='store_true',
+                    help="Compare latency values of the current run to old runs")
 args = parser.parse_args()
 config = ConfigParser.ConfigParser()
 config.readfp(open('local.cfg'))
@@ -81,7 +83,7 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
 
 for t in tests:
     if t.endswith(".fio"):
-        ret = run_test(config, result_data, args.config, t)
+        ret = run_test(config, result_data, args, t)
         if ret != 0:
             failed_tests.append(t)
 
