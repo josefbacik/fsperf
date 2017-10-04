@@ -1,0 +1,7 @@
+[torrent]
+	allrandrepeat=1
+	readwrite=randwrite
+	size=16G
+	ioengine=psync
+	end_fsync=1
+	fallocate=none
