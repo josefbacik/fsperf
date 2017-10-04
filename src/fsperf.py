@@ -48,6 +48,7 @@ def run_test(config, result_data, args, test):
         run_command("umount {}".format(config.get(section, 'directory')))
     json_data = open("results/{}.json".format(testname))
     data = json.load(json_data, cls=FioResultDecoder.FioResultDecoder)
+    data['global']['name'] = testname
     data['global']['config'] = section
     data['global']['kernel'] = platform.release()
     result_data.insert_result(data)

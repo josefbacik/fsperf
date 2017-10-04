@@ -14,8 +14,8 @@ class ResultData:
     def load_last(self, testname, config):
         d = {}
         cur = self.db.cursor()
-        cur.execute("SELECT * FROM fio_runs WHERE config = ? ORDER BY time DESC LIMIT 1",
-                    (config,))
+        cur.execute("SELECT * FROM fio_runs WHERE config = ? AND name = ?ORDER BY time DESC LIMIT 1",
+                    (config,testname))
         d['global'] = cur.fetchone()
         if d['global'] is None:
             return None

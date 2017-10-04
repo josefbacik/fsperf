@@ -35,7 +35,6 @@ class FioResultDecoder(json.JSONDecoder):
         obj = {}
         obj['global'] = {}
         obj['global']['time'] = default_obj['time']
-        obj['global']['name'] = default_obj['global options']['name']
         obj['jobs'] = []
         for job in default_obj['jobs']:
             new_job = {}

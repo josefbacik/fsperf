@@ -1,5 +1,4 @@
 [global]
-name=dio 4kbs 16 threads
 bs=4k
 direct=1
 size=1g
