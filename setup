@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cat fsperf-sqlite.sql | sqlite3 fsperf-results.db

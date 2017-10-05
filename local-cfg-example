@@ -1,0 +1,9 @@
+[default]
+mkfs=mkfs.btrfs -f /dev/nvme0n1
+mount=mount -o noatime /dev/nvme0n1 /mnt/btrfs-test
+directory=/mnt/btrfs-test
+
+[xfs]
+mkfs=mkfs.xfs -f /dev/nvme0n1
+mount=mount -o noatime /dev/nvme0n1 /mnt/btrfs-test
+directory=/mnt/btrfs-test
