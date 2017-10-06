@@ -4,6 +4,7 @@ ENDC = '\033[0m'
 
 default_keys = [ 'iops', 'io_kbytes', 'bw' ]
 latency_keys = [ 'lat_ns_min', 'lat_ns_max' ]
+main_job_keys = [ 'sys_cpu', 'elapsed' ]
 io_ops = ['read', 'write', 'trim' ]
 
 def _fuzzy_compare(a, b, fuzzy):
@@ -49,17 +50,17 @@ def _compare_jobs(ijob, njob, latency, fuzz):
                 outstr = "    {} improved: old {} new {} {}%".format(key,
                             ijob[key], njob[key], comp)
                 print(OK + outstr + ENDC)
-    k = 'sys_cpu'
-    comp = _fuzzy_compare(ijob[k], njob[k], fuzz)
-    if comp > 0:
-        outstr =  "    sys_cpu regressed: old {} new {} {}%".format(ijob[k],
-                    njob[k], comp)
-        print(FAIL + outstr + ENDC)
-        failed += 1
-    elif comp < 0:
-        outstr =  "    sys_cpu improved: old {} new {} {}%".format(ijob[k],
-                    njob[k], comp)
-        print(OK + outstr + ENDC)
+    for k in main_job_keys:
+        comp = _fuzzy_compare(ijob[k], njob[k], fuzz)
+        if comp > 0:
+            outstr =  "    {} regressed: old {} new {} {}%".format(k, ijob[k],
+                        njob[k], comp)
+            print(FAIL + outstr + ENDC)
+            failed += 1
+        elif comp < 0:
+            outstr =  "    {} improved: old {} new {} {}%".format(k, ijob[k],
+                        njob[k], comp)
+            print(OK + outstr + ENDC)
     return failed
 
 def compare_individual_jobs(initial, data, fuzz):
@@ -85,9 +86,12 @@ def default_merge(data):
     latency numbers.
     '''
     merge_job = {}
-    merge_job['sys_cpu'] = 0.0
     for job in data['jobs']:
-        merge_job['sys_cpu'] += job['sys_cpu']
+        for k in main_job_keys:
+            if k not in merge_job:
+                merge_job[k] = job[k]
+            else:
+                merge_job[k] += job[k]
         for io in io_ops:
             for k in default_keys:
                 key = "{}_{}".format(io, k)
