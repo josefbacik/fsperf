@@ -66,7 +66,12 @@ args = parser.parse_args()
 config = ConfigParser.ConfigParser()
 config.readfp(open('local.cfg'))
 
+disabled_tests = []
 failed_tests = []
+
+with open('disabled-tests') as f:
+    for line in f:
+        disabled_tests.append(line.rstrip())
 
 if not config.has_section(args.config):
     print("No section '{}' in local.cfg".format(args.config))
@@ -85,6 +90,9 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
 
 for t in tests:
     if t.endswith(".fio"):
+        if t[:-4] in disabled_tests:
+            print("Skipping {}".format(t[:-4]))
+            continue
         ret = run_test(config, result_data, args, t)
         if ret != 0:
             failed_tests.append(t)

@@ -83,3 +83,8 @@ Only tests in the same configuration will be compared against each other.
 Future work will include the ability to compare with other configurations, but
 currently you can just change your local.cfg if you wish to compare runs of
 different configurations.
+
+# Disabling tests
+
+Sometimes you may need to disable a test, so simply add the test name to it's
+own line in the `disabled-tests` file in the root of the project directory.
