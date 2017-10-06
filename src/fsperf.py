@@ -41,6 +41,7 @@ def run_test(config, result_data, args, test):
     if config.has_option(section, 'mount'):
         run_command(config.get(section, 'mount'))
     cmd = "fio --output-format=json --output=results/{}.json".format(testname)
+    cmd += " --alloc-size 98304"
     cmd += " --directory {}".format(config.get(section, 'directory'))
     cmd += " {}".format("tests/" + test)
     run_command(cmd)
