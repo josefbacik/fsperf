@@ -49,7 +49,7 @@ will contain the results of the fio runs.
 Once you've setup your `local.cfg` you simply run
 
 ```
-fsperf
+./fsperf
 ```
 
 and wait for the suite to finish.  The complete data set that fio produces will
@@ -60,7 +60,7 @@ ability to visualize more data to be able to spot trends.  If desired you can
 run
 
 ```
-fsperf --latency
+./fsperf --latency
 ```
 
 To include comparisons of min and max latency.  However these can be pretty

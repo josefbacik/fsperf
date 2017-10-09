@@ -44,9 +44,11 @@ def run_test(config, result_data, args, test):
     cmd += " --alloc-size 98304"
     cmd += " --directory {}".format(config.get(section, 'directory'))
     cmd += " {}".format("tests/" + test)
-    run_command(cmd)
-    if config.has_option(section, 'mount'):
-        run_command("umount {}".format(config.get(section, 'directory')))
+    try:
+        run_command(cmd)
+    finally:
+        if config.has_option(section, 'mount'): 
+            run_command("umount {}".format(config.get(section, 'directory')))
     json_data = open("results/{}.json".format(testname))
     data = json.load(json_data, cls=FioResultDecoder.FioResultDecoder)
     data['global']['name'] = testname

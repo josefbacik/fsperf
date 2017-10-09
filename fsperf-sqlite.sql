@@ -1,11 +1,11 @@
-CREATE TABLE `fio_runs` (
+CREATE TABLE IF NOT EXISTS `fio_runs` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `kernel` datetime NOT NULL,
   `config` varchar(256) NOT NULL,
   `name` varchar(256) NOT NULL,
   `time` datetime NOT NULL
 );
-CREATE TABLE `fio_jobs` (
+CREATE TABLE IF NOT EXISTS `fio_jobs` (
   `run_id` int NOT NULL,
   `latency_window` int NOT NULL,
   `trim_lat_ns_mean` float NOT NULL,
