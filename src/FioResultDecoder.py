@@ -38,15 +38,15 @@ class FioResultDecoder(json.JSONDecoder):
         obj['jobs'] = []
         for job in default_obj['jobs']:
             new_job = {}
-            for key,value in job.iteritems():
+            for key,value in job.items():
                 if key not in self._io_ops:
                     if value.__class__.__name__ in self._ignore_types:
                         continue
                     new_job[key] = value
                     continue
-                for k,v in value.iteritems():
+                for k,v in value.items():
                     if k in self._override_keys:
-                        for subk,subv in v.iteritems():
+                        for subk,subv in v.items():
                             collapsed_key = "{}_{}_{}".format(key, k, subk)
                             new_job[collapsed_key] = subv
                         continue

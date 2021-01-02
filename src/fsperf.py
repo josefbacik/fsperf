@@ -1,5 +1,5 @@
 import argparse
-import ConfigParser
+import configparser
 import os
 import sys
 from subprocess import Popen
@@ -31,8 +31,7 @@ def run_command(cmd):
     print("Command '{}' failed to run".format(cmd))
     sys.exit(1)
 
-def run_test(config, result_data, args, test):
-    section = args.config
+def run_test(config, section, result_data, args, test):
     testname = test[:-4]
     compare = result_data.load_last(testname, section)
     print("Running {}".format(testname))
@@ -60,13 +59,14 @@ def run_test(config, result_data, args, test):
     return FioCompare.compare_fiodata(compare, data, args.latency)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--config', type=str, default='default',
+parser.add_argument('-c', '--config', type=str,
                     help="Configuration to use to run the tests")
 parser.add_argument('-l', '--latency', action='store_true',
                     help="Compare latency values of the current run to old runs")
 args = parser.parse_args()
-config = ConfigParser.ConfigParser()
-config.readfp(open('local.cfg'))
+
+config = configparser.ConfigParser()
+config.read('local.cfg')
 
 disabled_tests = []
 failed_tests = []
@@ -75,12 +75,11 @@ with open('disabled-tests') as f:
     for line in f:
         disabled_tests.append(line.rstrip())
 
-if not config.has_section(args.config):
+sections = [args.config]
+if args.config is None:
+    sections = config.sections()
+elif not config.has_section(args.config):
     print("No section '{}' in local.cfg".format(args.config))
-    sys.exit(1)
-
-if not config.has_option(args.config, "directory"):
-    print("Must specify a directory option in section {}".format(args.config))
     sys.exit(1)
 
 result_data = ResultData.ResultData("fsperf-results.db")
@@ -90,14 +89,19 @@ tests = []
 for (dirpath, dirnames, filenames) in os.walk("tests/"):
     tests.extend(filenames)
 
-for t in tests:
-    if t.endswith(".fio"):
-        if t[:-4] in disabled_tests:
-            print("Skipping {}".format(t[:-4]))
-            continue
-        ret = run_test(config, result_data, args, t)
-        if ret != 0:
-            failed_tests.append(t)
+for s in sections:
+    if not config.has_option(s, "directory"):
+        print("Must specify a directory option in section {}".format(s))
+        sys.exit(1)
+    for t in tests:
+        if t.endswith(".fio"):
+            if t[:-4] in disabled_tests:
+                print("Skipping {}".format(t[:-4]))
+                continue
+            print("running test")
+            ret = run_test(config, s, result_data, args, t)
+            if ret != 0:
+                failed_tests.append(t)
 
 if len(failed_tests) > 0:
     print("Failed {} tests: {}".format(len(failed_tests),

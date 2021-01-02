@@ -33,7 +33,7 @@ data['global']['kernel'] = '4.14'
 
 print("CREATE TABLE `fio_runs` (")
 outstr = "  `id` int(11) PRIMARY KEY"
-for key,value in data['global'].iteritems():
+for key,value in data['global'].items():
     outstr += print_schema_def(key, value)
 print(outstr)
 print(");")
@@ -43,7 +43,7 @@ job['run_id'] = 0
 
 print("CREATE TABLE `fio_jobs` (")
 outstr = "  `id` int PRIMARY KEY"
-for key,value in job.iteritems():
+for key,value in job.items():
     outstr += print_schema_def(key, value)
 print(outstr)
 print(");")

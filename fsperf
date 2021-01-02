@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python src/fsperf.py $@
+python3 src/fsperf.py $@
