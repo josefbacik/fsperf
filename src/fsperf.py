@@ -28,6 +28,7 @@ def run_test(session, config, section, test):
     if config.has_option(section, 'mount'):
         run_command(config.get(section, 'mount'))
     try:
+        test.setup()
         test.test(session, config.get(section, 'directory'), "results", section)
     finally:
         if config.has_option(section, 'mount'):

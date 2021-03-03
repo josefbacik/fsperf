@@ -53,4 +53,4 @@ class TimeResult(Base):
     __tablename__ = 'time_results'
     id = Column(Integer, primary_key=True)
     run_id = Column(ForeignKey('runs.id'))
-    elapsed = Column(Integer, default=0)
+    elapsed = Column(Float, default=0.0)

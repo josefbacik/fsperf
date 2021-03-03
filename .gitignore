@@ -2,3 +2,4 @@ local.cfg
 results
 fsperf-results.db
 tests/__pycache__/
+*.swp

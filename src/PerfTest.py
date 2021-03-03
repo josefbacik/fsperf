@@ -3,6 +3,7 @@ import platform
 import ResultData
 import utils
 import json
+from timeit import default_timer as timer
 
 class PerfTest():
     name = ""
@@ -36,3 +37,22 @@ class FioTest(PerfTest):
         utils.run_command(command)
 
         self.record_results(session, results, section)
+
+class TimeTest(PerfTest):
+    command = ""
+
+    def record_results(self, session, elapsed, section):
+        run = ResultData.Run(kernel=platform.release(), config=section,
+                             name=self.name)
+        r = ResultData.TimeResult()
+        r.elapsed = elapsed
+        run.time_results.append(r)
+        session.add(run)
+        session.commit()
+
+    def test(self, session, directory, results, section):
+        command = self.command.replace('DIRECTORY', directory)
+        start = timer()
+        utils.run_command(command)
+        elapsed = timer() - start
+        self.record_results(session, elapsed, section)
