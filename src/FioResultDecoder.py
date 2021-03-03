@@ -26,15 +26,21 @@ class FioResultDecoder(json.JSONDecoder):
     time fio changes it's json output format.
     """
     _ignore_types = ['dict', 'list']
-    _override_keys = ['lat_ns']
+    _override_keys = ['lat_ns', 'clat_ns']
     _io_ops = ['read', 'write', 'trim']
+
+    def _extract_percentiles(self, new_job, iotype, key, percentiles):
+        for p,pval in percentiles.items():
+            p = float(p)
+            if p.is_integer():
+                p = int(p)
+            collapsed_key = "{}_{}_p{}".format(iotype, key, p)
+            new_job[collapsed_key] = pval
 
     def decode(self, json_string):
         """This does the dirty work of converting everything"""
         default_obj = super(FioResultDecoder, self).decode(json_string)
         obj = {}
-        obj['global'] = {}
-        obj['global']['time'] = default_obj['time']
         obj['jobs'] = []
         for job in default_obj['jobs']:
             new_job = {}
@@ -47,6 +53,9 @@ class FioResultDecoder(json.JSONDecoder):
                 for k,v in value.items():
                     if k in self._override_keys:
                         for subk,subv in v.items():
+                            if subk == "percentile":
+                                self._extract_percentiles(new_job, key, k, subv)
+                                continue
                             collapsed_key = "{}_{}_{}".format(key, k, subk)
                             new_job[collapsed_key] = subv
                         continue

@@ -4,11 +4,13 @@ import os
 import sys
 from subprocess import Popen
 import errno
-import json
-import FioResultDecoder
-import platform
-import ResultData
 import FioCompare
+import ResultData
+import PerfTest
+from utils import run_command
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import importlib.util
 
 # Shamelessly copied from stackoverflow
 def mkdir_p(path):
@@ -20,43 +22,17 @@ def mkdir_p(path):
         else:
             raise
 
-def run_command(cmd):
-    print("  running cmd '{}'".format(cmd))
-    devnull = open('/dev/null')
-    p = Popen(cmd.split(' '), stdout=devnull, stderr=devnull)
-    p.wait()
-    devnull.close()
-    if p.returncode == 0:
-        return
-    print("Command '{}' failed to run".format(cmd))
-    sys.exit(1)
-
-def run_test(config, section, result_data, args, test):
-    testname = test[:-4]
-    compare = result_data.load_last(testname, section)
-    print("Running {}".format(testname))
+def run_test(session, config, section, test):
     if config.has_option(section, 'mkfs'):
         run_command(config.get(section, 'mkfs'))
     if config.has_option(section, 'mount'):
         run_command(config.get(section, 'mount'))
-    cmd = "fio --output-format=json --output=results/{}.json".format(testname)
-    cmd += " --alloc-size 98304"
-    cmd += " --directory {}".format(config.get(section, 'directory'))
-    cmd += " {}".format("tests/" + test)
     try:
-        run_command(cmd)
+        test.test(session, config.get(section, 'directory'), "results", section)
     finally:
-        if config.has_option(section, 'mount'): 
+        if config.has_option(section, 'mount'):
             run_command("umount {}".format(config.get(section, 'directory')))
-    json_data = open("results/{}.json".format(testname))
-    data = json.load(json_data, cls=FioResultDecoder.FioResultDecoder)
-    data['global']['name'] = testname
-    data['global']['config'] = section
-    data['global']['kernel'] = platform.release()
-    result_data.insert_result(data)
-    if compare is None:
-        return 0
-    return FioCompare.compare_fiodata(compare, data, args.latency)
+    return 0
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', type=str,
@@ -82,26 +58,41 @@ elif not config.has_section(args.config):
     print("No section '{}' in local.cfg".format(args.config))
     sys.exit(1)
 
-result_data = ResultData.ResultData("fsperf-results.db")
+engine = create_engine('sqlite:///fsperf-results.db')
+ResultData.Base.metadata.create_all(engine)
+Session = sessionmaker()
+Session.configure(bind=engine)
+session = Session()
+
 mkdir_p("results/")
 
 tests = []
 for (dirpath, dirnames, filenames) in os.walk("tests/"):
-    tests.extend(filenames)
+    for f in filenames:
+        if not f.endswith(".py"):
+            continue
+        p = dirpath + '/' + f
+        spec = importlib.util.spec_from_file_location('module.name', p)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        attrs = set(dir(m)) - set(dir(PerfTest))
+        for cname in attrs:
+            c = getattr(m, cname)
+            if issubclass(c, PerfTest.PerfTest):
+                tests.append(c())
 
 for s in sections:
     if not config.has_option(s, "directory"):
         print("Must specify a directory option in section {}".format(s))
         sys.exit(1)
     for t in tests:
-        if t.endswith(".fio"):
-            if t[:-4] in disabled_tests:
-                print("Skipping {}".format(t[:-4]))
-                continue
-            print("running test")
-            ret = run_test(config, s, result_data, args, t)
-            if ret != 0:
-                failed_tests.append(t)
+        if t.__class__.__name__ in disabled_tests:
+            print("Skipping {}".format(t.__class__.__name__))
+            continue
+        print("Running {}".format(t.__class__.__name__))
+        ret = run_test(session, config, s, t)
+        if ret != 0:
+            failed_tests.append(t)
 
 if len(failed_tests) > 0:
     print("Failed {} tests: {}".format(len(failed_tests),

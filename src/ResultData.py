@@ -1,43 +1,56 @@
-import sqlite3
+import datetime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import (Table, Column, Integer, String, ForeignKey, DateTime,
+                        Float)
+from sqlalchemy.orm import relationship
 
-def _dict_factory(cursor, row):
-    d = {}
-    for idx,col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+Base = declarative_base()
 
-class ResultData:
-    def __init__(self, filename):
-        self.db = sqlite3.connect(filename)
-        self.db.row_factory = _dict_factory
+class Run(Base):
+    __tablename__ = "runs"
 
-    def load_last(self, testname, config):
-        d = {}
-        cur = self.db.cursor()
-        cur.execute("SELECT * FROM fio_runs WHERE config = ? AND name = ?ORDER BY time DESC LIMIT 1",
-                    (config,testname))
-        d['global'] = cur.fetchone()
-        if d['global'] is None:
-            return None
-        cur.execute("SELECT * FROM fio_jobs WHERE run_id = ?",
-                    (d['global']['id'],))
-        d['jobs'] = cur.fetchall()
-        return d
+    id = Column(Integer, primary_key=True)
+    kernel = Column(String)
+    config = Column(String)
+    name = Column(String)
+    time = Column(DateTime, default=datetime.datetime.utcnow)
 
-    def _insert_obj(self, tablename, obj):
-        keys = obj.keys()
-        values = obj.values()
-        cur = self.db.cursor()
-        cmd = "INSERT INTO {} ({}) VALUES ({}".format(tablename,
-                                                       ",".join(keys),
-                                                       '?,' * len(values))
-        cmd = cmd[:-1] + ')'
-        cur.execute(cmd, tuple(values))
-        self.db.commit()
-        return cur.lastrowid
+    time_results = relationship("TimeResult", backref="runs",
+                                order_by="TimeResult.id")
+    fio_results = relationship("FioResult", backref="runs",
+                               order_by="FioResult.id")
 
-    def insert_result(self, result):
-        row_id = self._insert_obj('fio_runs', result['global'])
-        for job in result['jobs']:
-            job['run_id'] = row_id
-            self._insert_obj('fio_jobs', job)
+class FioResult(Base):
+    __tablename__ = 'fio_results'
+
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id'))
+    read_io_bytes = Column(Integer, default=0)
+    elapsed = Column(Integer, default=0)
+    sys_cpu = Column(Float, default=0.0)
+    read_lat_ns_min = Column(Integer, default=0)
+    read_lat_ns_max = Column(Integer, default=0)
+    read_clat_ns_p50 = Column(Integer, default=0)
+    read_clat_ns_p99 = Column(Integer, default=0)
+    read_iops = Column(Float, default=0)
+    read_io_kbytes = Column(Integer, default=0)
+    read_bw_bytes = Column(Integer, default=0)
+    write_lat_ns_min = Column(Integer, default=0)
+    write_lat_ns_max = Column(Integer, default=0)
+    write_iops = Column(Float, default=0.0)
+    write_io_kbytes = Column(Integer, default=0)
+    write_bw_bytes = Column(Integer, default=0)
+    write_clat_ns_p50 = Column(Integer, default=0)
+    write_clat_ns_p99 = Column(Integer, default=0)
+
+    def load_from_dict(self, inval):
+        for k in dir(self):
+            if k not in inval:
+                continue
+            setattr(self, k, inval[k])
+
+class TimeResult(Base):
+    __tablename__ = 'time_results'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id'))
+    elapsed = Column(Integer, default=0)
