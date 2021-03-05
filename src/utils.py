@@ -1,12 +1,16 @@
 from subprocess import Popen
 import sys
 
-def run_command(cmd):
+def run_command(cmd, outputfile=None):
     print("  running cmd '{}'".format(cmd))
-    devnull = open('/dev/null')
-    p = Popen(cmd.split(' '), stdout=devnull, stderr=devnull)
+    need_close = False
+    if not outputfile:
+        outputfile = open('/dev/null')
+        need_close = True
+    p = Popen(cmd.split(' '), stdout=outputfile, stderr=outputfile)
     p.wait()
-    devnull.close()
+    if need_close:
+        outputfile.close()
     if p.returncode == 0:
         return
     print("Command '{}' failed to run".format(cmd))

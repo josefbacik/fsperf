@@ -19,6 +19,8 @@ class Run(Base):
                                 order_by="TimeResult.id")
     fio_results = relationship("FioResult", backref="runs",
                                order_by="FioResult.id")
+    dbench_results = relationship("DbenchResult", backref="runs",
+                                  order_by="DbenchResult.id")
 
 class FioResult(Base):
     __tablename__ = 'fio_results'
@@ -54,3 +56,31 @@ class TimeResult(Base):
     id = Column(Integer, primary_key=True)
     run_id = Column(ForeignKey('runs.id'))
     elapsed = Column(Float, default=0.0)
+
+class DbenchResult(Base):
+    __tablename__ = 'dbench_results'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id'))
+    throughput = Column(Float, default=0.0)
+    ntcreatex = Column(Float, default=0.0)
+    close = Column(Float, default=0.0)
+    rename = Column(Float, default=0.0)
+    unlink = Column(Float, default=0.0)
+    deltree = Column(Float, default=0.0)
+    mkdir = Column(Float, default=0.0)
+    qpathinfo = Column(Float, default=0.0)
+    qfileinfo = Column(Float, default=0.0)
+    qfsinfo = Column(Float, default=0.0)
+    sfileinfo = Column(Float, default=0.0)
+    find = Column(Float, default=0.0)
+    writex = Column(Float, default=0.0)
+    readx = Column(Float, default=0.0)
+    lockx = Column(Float, default=0.0)
+    unlockx = Column(Float, default=0.0)
+    flush = Column(Float, default=0.0)
+
+    def load_from_dict(self, inval):
+        for k in dir(self):
+            if k not in inval:
+                continue
+            setattr(self, k, inval[k])
