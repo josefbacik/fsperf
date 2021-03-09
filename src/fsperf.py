@@ -11,6 +11,7 @@ from utils import run_command
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import importlib.util
+import inspect
 
 # Shamelessly copied from stackoverflow
 def mkdir_p(path):
@@ -40,6 +41,9 @@ parser.add_argument('-c', '--config', type=str,
                     help="Configuration to use to run the tests")
 parser.add_argument('-l', '--latency', action='store_true',
                     help="Compare latency values of the current run to old runs")
+parser.add_argument('tests', nargs='*',
+                    help="Specific test[s] to run.")
+
 args = parser.parse_args()
 
 config = configparser.ConfigParser()
@@ -79,7 +83,8 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
         attrs = set(dir(m)) - set(dir(PerfTest))
         for cname in attrs:
             c = getattr(m, cname)
-            if issubclass(c, PerfTest.PerfTest):
+            print(c)
+            if inspect.isclass(c) and issubclass(c, PerfTest.PerfTest):
                 tests.append(c())
 
 for s in sections:
@@ -89,6 +94,8 @@ for s in sections:
     for t in tests:
         if t.__class__.__name__ in disabled_tests:
             print("Skipping {}".format(t.__class__.__name__))
+            continue
+        if len(args.tests) and t.name not in args.tests:
             continue
         print("Running {}".format(t.__class__.__name__))
         ret = run_test(session, config, s, t)
