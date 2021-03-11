@@ -12,6 +12,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import importlib.util
 import inspect
+import datetime
+import utils
 
 # Shamelessly copied from stackoverflow
 def mkdir_p(path):
@@ -41,6 +43,8 @@ parser.add_argument('-c', '--config', type=str,
                     help="Configuration to use to run the tests")
 parser.add_argument('-l', '--latency', action='store_true',
                     help="Compare latency values of the current run to old runs")
+parser.add_argument('-t', '--testonly', action='store_true',
+                    help="Compare this run to previous runs, but do not store this run.")
 parser.add_argument('tests', nargs='*',
                     help="Specific test[s] to run.")
 
@@ -83,7 +87,6 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
         attrs = set(dir(m)) - set(dir(PerfTest))
         for cname in attrs:
             c = getattr(m, cname)
-            print(c)
             if inspect.isclass(c) and issubclass(c, PerfTest.PerfTest):
                 tests.append(c())
 
@@ -98,12 +101,24 @@ for s in sections:
         if len(args.tests) and t.name not in args.tests:
             continue
         print("Running {}".format(t.__class__.__name__))
-        ret = run_test(session, config, s, t)
-        if ret != 0:
-            failed_tests.append(t)
+        run_test(session, config, s, t)
 
-if len(failed_tests) > 0:
-    print("Failed {} tests: {}".format(len(failed_tests),
-          " ".join(failed_tests)))
-    sys.exit(1)
-print("Passed all tests")
+if args.testonly:
+    today = datetime.date.today()
+    week_ago = today - datetime.timedelta(days=7)
+    for t in tests:
+        if len(args.tests) and t.name not in args.tests:
+            continue
+        results = session.query(ResultData.Run).\
+                outerjoin(ResultData.FioResult).\
+                outerjoin(ResultData.DbenchResult).\
+                outerjoin(ResultData.TimeResult).\
+                filter(ResultData.Run.time >=week_ago).\
+                filter(ResultData.Run.name == t.name).\
+                order_by(ResultData.Run.id).all()
+        newest = results.pop()
+        cur = utils.results_to_dict(newest)
+        avg_results = utils.avg_results(results)
+        utils.print_comparison_table(avg_results, cur)
+        session.delete(newest)
+        session.commit()

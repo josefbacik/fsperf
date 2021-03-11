@@ -16,17 +16,23 @@ class Run(Base):
     time = Column(DateTime, default=datetime.datetime.utcnow)
 
     time_results = relationship("TimeResult", backref="runs",
-                                order_by="TimeResult.id")
+                                order_by="TimeResult.id",
+                                cascade="all, delete",
+                                passive_deletes=True)
     fio_results = relationship("FioResult", backref="runs",
-                               order_by="FioResult.id")
+                               order_by="FioResult.id",
+                               cascade="all, delete",
+                               passive_deletes=True)
     dbench_results = relationship("DbenchResult", backref="runs",
-                                  order_by="DbenchResult.id")
+                                  order_by="DbenchResult.id",
+                                  cascade="all, delete",
+                                  passive_deletes=True)
 
 class FioResult(Base):
     __tablename__ = 'fio_results'
 
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id'))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
     read_io_bytes = Column(Integer, default=0)
     elapsed = Column(Integer, default=0)
     sys_cpu = Column(Float, default=0.0)
@@ -54,13 +60,13 @@ class FioResult(Base):
 class TimeResult(Base):
     __tablename__ = 'time_results'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id'))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
     elapsed = Column(Float, default=0.0)
 
 class DbenchResult(Base):
     __tablename__ = 'dbench_results'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id'))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
     throughput = Column(Float, default=0.0)
     ntcreatex = Column(Float, default=0.0)
     close = Column(Float, default=0.0)
