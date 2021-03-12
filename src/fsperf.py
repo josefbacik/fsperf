@@ -3,7 +3,6 @@ import configparser
 import os
 import sys
 from subprocess import Popen
-import errno
 import FioCompare
 import ResultData
 import PerfTest

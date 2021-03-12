@@ -16,7 +16,8 @@ def get_avgs(session, config, test, days):
         filter(Run.config == config).\
         filter(Run.name == test).\
         order_by(Run.time).all()
-    newest = results.pop()
+    if len(results) > 1:
+        newest = results.pop()
     return utils.avg_results(results)
 
 def get_last(session, config, test):
