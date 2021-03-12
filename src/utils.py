@@ -4,6 +4,16 @@ import texttable
 import itertools
 import numbers
 
+# Shamelessly copied from stackoverflow
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
 def run_command(cmd, outputfile=None):
     print("  running cmd '{}'".format(cmd))
     need_close = False
@@ -60,6 +70,26 @@ def diff_string(a, b):
     if diff >= 5.0:
         return FAIL + "{:.2f}%".format(diff) + ENDC
     return OK + "{:.2f}%".format(diff) + ENDC
+
+def check_regression(baseline, recent, threshold):
+    fail_thresh = len(baseline.items()) * 10 / 100
+    if fail_thresh == 0:
+        fail_thresh = len(baseline.items())
+    nr_fail = 0
+    for k,v in baseline.items():
+        diff = pct_diff(v, recent[k]['value'])
+        # Right now we have no way to know which key direction means something
+        # good or bad, so just treat anything |diff| > thresh as a regression,
+        # then at least we can at least look at the results and figure it out
+        # for ourselves.
+        if diff < 0:
+            diff = -diff
+        if diff > threshold:
+            recent[k]['regression'] = True
+            nr_fail += 1
+        else:
+            recent[k]['regression'] = False
+    return nr_fail >= fail_thresh
 
 def print_comparison_table(baseline, results):
     table = texttable.Texttable()

@@ -15,16 +15,6 @@ import inspect
 import datetime
 import utils
 
-# Shamelessly copied from stackoverflow
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
-
 def run_test(session, config, section, test):
     if config.has_option(section, 'mkfs'):
         run_command(config.get(section, 'mkfs'))
@@ -73,7 +63,7 @@ Session = sessionmaker()
 Session.configure(bind=engine)
 session = Session()
 
-mkdir_p("results/")
+utils.mkdir_p("results/")
 
 tests = []
 for (dirpath, dirnames, filenames) in os.walk("tests/"):
@@ -119,6 +109,8 @@ if args.testonly:
         newest = results.pop()
         cur = utils.results_to_dict(newest)
         avg_results = utils.avg_results(results)
+        print(f"{t.name} results")
         utils.print_comparison_table(avg_results, cur)
+        print("")
         session.delete(newest)
         session.commit()

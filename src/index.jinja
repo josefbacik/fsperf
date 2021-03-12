@@ -1,0 +1,24 @@
+<html>
+<head>
+    <title>Performance results</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+{% for c in configs %}
+<table class="runs">
+    <tr><th class="runs" colspan="2">{{ c }}</th></tr>
+    <tr><td>Test</td><td>Status</td></tr>
+    {% for t in tests %}
+        <tr>
+            <td><a href="/{{ t + ".html" }}">{{ t }}</a></td>
+            {% if recent[c][t]['regression'] %}
+                <td class="failing">FAIL</td>
+            {% else %}
+                <td class="passing">OK</td>
+            {% endif %}
+        </tr>
+    {% endfor %}
+</table>
+{% endfor %}
+</body>
+</html>

@@ -1,0 +1,36 @@
+<html>
+<head>
+    <title>{{ test }} results</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+{% for c in configs %}
+<table class="results">
+    <tr><th class="runs" colspan="6">{{ c }}</th></tr>
+    <tr>
+        <td>Metric</td>
+        <td>4 week avg</td>
+        <td>3 week avg</td>
+        <td>2 week avg</td>
+        <td>1 week avg</td>
+        <td>Last</td>
+    <tr>
+    {% for m in avgs[0][c][test].keys() %}
+        <tr>
+            <td>{{ m }}</td>
+            <td>{{ "%0.2f" | format(avgs[0][c][test][m]|float) }}</td>
+            <td>{{ "%0.2f" | format(avgs[1][c][test][m]|float) }}</td>
+            <td>{{ "%0.2f" | format(avgs[2][c][test][m]|float) }}</td>
+            <td>{{ "%0.2f" | format(avgs[3][c][test][m]|float) }}</td>
+            {% if recent[c][test][m]['regression'] %}
+                <td class="failing">
+            {% else %}
+                <td class="passing">
+            {% endif %}
+            {{ "%0.2f" | format(recent[c][test][m]['value']|float) }}</td>
+        </tr>
+    {% endfor %}
+</table>
+{% endfor %}
+</body>
+</html>
