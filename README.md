@@ -3,8 +3,8 @@
 fsperf is a performance testing framework built around
 [fio](https://github.com/axboe/fio).  The goal is to provide a simple to run
 framework for file system developers to be able to check their patches and make
-sure they do not regress in performance.  Adding new tests is as easy as adding
-a .fio file to the tests directory.
+sure they do not regress in performance.  In addition to `fio` tests, `fsperf`
+supports basic timing tests and `dbench` tests.
 
 # Configuration
 
@@ -52,19 +52,43 @@ Once you've setup your `local.cfg` you simply run
 ./fsperf
 ```
 
-and wait for the suite to finish.  The complete data set that fio produces will
-be stored in the database, but fsperf only compares `iops`, `io_kbytes`, and
-`bw` for reads, writes and trim operations.  The intent is to cover the basics
-and have as few false positives as possible.  Future work will include the
-ability to visualize more data to be able to spot trends.  If desired you can
-run
+and wait for the suite to finish.  This will run the tests found under the
+tests/ directory and store the results.  The blank invocation is meant for
+continuous performance testing.
+
+## A/B testing
+
+If you wish to do A/B testing you can do the following
 
 ```
-./fsperf --latency
+./fsperf -p "myabtest"
+<make changes>
+./fsperf -p "myabtest" -t
+./fsperf-clean-results myabtest
 ```
 
-To include comparisons of min and max latency.  However these can be pretty
-jittery between runs and may be less useful.
+This will store the base results under a specific heading, "myabtest", so it
+doesn't muddy any other unrelated performance results.  Then using the `-t`
+option it will run the tests, and spit out a comparison table between the
+baseline and the current run, and then discard the current run's results in
+order to not pollute the baseline results.
+
+The comparison compares all of the saved results, so things like `fio`'s max
+latencies may be a little noisy.  In order to reduce the noise of these sort of
+metrics you can do something like the following
+
+```
+./fsperf -p "myabtest" -n 5
+<make changes>
+./fsperf -p "myabtest" -n 5 -t
+./fsperf-clean-results myabtest
+```
+
+This will run each test 5 times, which means the baseline and new results will
+be averaged, and then the averages will be compared against eachother.
+
+Finally the `fsperf-clean-results` script will delete anything that matches your
+special results, so you can re-use the label in the future.
 
 # Understanding the comparisons
 

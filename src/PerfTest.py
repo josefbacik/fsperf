@@ -1,5 +1,4 @@
 import FioResultDecoder
-import platform
 import ResultData
 import utils
 import json
@@ -11,23 +10,18 @@ class PerfTest():
 
     def setup(self):
         pass
-    def test(self, session, directory, results, section):
+    def test(self, run, directory, results):
         pass
 
 class FioTest(PerfTest):
-    def record_results(self, session, results, section):
+    def record_results(self, run, results):
         json_data = open("{}/{}.json".format(results, self.name))
-        data = json.load(json_data, cls=FioResultDecoder.FioResultDecoder)
-        run = ResultData.Run(kernel=platform.release(), config=section,
-                             name=self.name)
         for j in data['jobs']:
             r = ResultData.FioResult()
             r.load_from_dict(j)
             run.fio_results.append(r)
-        session.add(run)
-        session.commit()
 
-    def test(self, session, directory, results, section):
+    def test(self, run, directory, results):
         command = "fio --output-format=json"
         command += " --output={}/{}.json".format(results, self.name)
         command += " --alloc-size 98304"
@@ -35,36 +29,28 @@ class FioTest(PerfTest):
         command += self.command
         utils.run_command(command)
 
-        self.record_results(session, results, section)
+        self.record_results(run, results)
 
 class TimeTest(PerfTest):
-    def record_results(self, session, elapsed, section):
-        run = ResultData.Run(kernel=platform.release(), config=section,
-                             name=self.name)
+    def record_results(self, run, elapsed):
         r = ResultData.TimeResult()
         r.elapsed = elapsed
         run.time_results.append(r)
-        session.add(run)
-        session.commit()
 
-    def test(self, session, directory, results, section):
+    def test(self, run, directory, results):
         command = self.command.replace('DIRECTORY', directory)
         start = timer()
         utils.run_command(command)
         elapsed = timer() - start
-        self.record_results(session, elapsed, section)
+        self.record_results(run, elapsed)
 
 class DbenchTest(PerfTest):
-    def record_results(self, session, section, result_dict):
-        run = ResultData.Run(kernel=platform.release(), config=section,
-                             name=self.name)
+    def record_results(self, run, result_dict):
         r = ResultData.DbenchResult()
         r.load_from_dict(result_dict)
         run.dbench_results.append(r)
-        session.add(run)
-        session.commit()
 
-    def test(self, session, directory, results, section):
+    def test(self, run, directory, results):
         command = "dbench " + self.command + " -D {}".format(directory)
         fd = open("{}/{}.txt".format(results, self.name), "w+")
         utils.run_command(command, fd)
@@ -82,4 +68,4 @@ class DbenchTest(PerfTest):
                 results[key] = vals[3]
             elif len(vals) > 4:
                 results['throughput'] = vals[1]
-        self.record_results(session, section, results)
+        self.record_results(run, results)

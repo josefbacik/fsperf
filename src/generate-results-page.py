@@ -15,6 +15,7 @@ def get_avgs(session, config, test, days):
         filter(Run.time >= thresh).\
         filter(Run.config == config).\
         filter(Run.name == test).\
+        filter(Run.purpose == "continuous").\
         order_by(Run.time).all()
     if len(results) > 1:
         newest = results.pop()
@@ -27,6 +28,7 @@ def get_last(session, config, test):
         outerjoin(TimeResult).\
         filter(Run.name == test).\
         filter(Run.config == config).\
+        filter(Run.purpose == "continuous").\
         order_by(Run.id.desc()).first()
     results = utils.results_to_dict(result)
     ret = {}

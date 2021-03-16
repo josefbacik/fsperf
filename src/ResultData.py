@@ -20,16 +20,13 @@ class Run(Base):
 
     time_results = relationship("TimeResult", backref="runs",
                                 order_by="TimeResult.id",
-                                cascade="all, delete",
-                                passive_deletes=True)
+                                cascade="all,delete")
     fio_results = relationship("FioResult", backref="runs",
                                order_by="FioResult.id",
-                               cascade="all, delete",
-                               passive_deletes=True)
+                               cascade="all,delete")
     dbench_results = relationship("DbenchResult", backref="runs",
                                   order_by="DbenchResult.id",
-                                  cascade="all, delete",
-                                  passive_deletes=True)
+                                  cascade="all,delete")
 
 class FioResult(Base):
     __tablename__ = 'fio_results'

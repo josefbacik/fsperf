@@ -13,18 +13,24 @@ import importlib.util
 import inspect
 import datetime
 import utils
+import platform
 
-def run_test(session, config, section, test):
-    if config.has_option(section, 'mkfs'):
-        run_command(config.get(section, 'mkfs'))
-    if config.has_option(section, 'mount'):
-        run_command(config.get(section, 'mount'))
-    try:
-        test.setup()
-        test.test(session, config.get(section, 'directory'), "results", section)
-    finally:
+def run_test(args, session, config, section, test):
+    for i in range(0, args.numruns):
+        if config.has_option(section, 'mkfs'):
+            run_command(config.get(section, 'mkfs'))
         if config.has_option(section, 'mount'):
-            run_command("umount {}".format(config.get(section, 'directory')))
+            run_command(config.get(section, 'mount'))
+        try:
+            test.setup()
+            run = ResultData.Run(kernel=platform.release(), config=section,
+                                 name=test.name, purpose=args.purpose)
+            test.test(run, config.get(section, 'directory'), "results")
+            session.add(run)
+            session.commit()
+        finally:
+            if config.has_option(section, 'mount'):
+                run_command("umount {}".format(config.get(section, 'directory')))
     return 0
 
 parser = argparse.ArgumentParser()
@@ -34,6 +40,10 @@ parser.add_argument('-l', '--latency', action='store_true',
                     help="Compare latency values of the current run to old runs")
 parser.add_argument('-t', '--testonly', action='store_true',
                     help="Compare this run to previous runs, but do not store this run.")
+parser.add_argument('-n', '--numruns', type=int, default=1,
+                    help="Run each test N number of times")
+parser.add_argument('-p', '--purpose', type=str, default="continuous",
+                    help="Set the specific purpose for this run, useful for A/B testing")
 parser.add_argument('tests', nargs='*',
                     help="Specific test[s] to run.")
 
@@ -90,7 +100,7 @@ for s in sections:
         if len(args.tests) and t.name not in args.tests:
             continue
         print("Running {}".format(t.__class__.__name__))
-        run_test(session, config, s, t)
+        run_test(args, session, config, s, t)
 
 if args.testonly:
     today = datetime.date.today()
@@ -104,12 +114,16 @@ if args.testonly:
                 outerjoin(ResultData.TimeResult).\
                 filter(ResultData.Run.time >=week_ago).\
                 filter(ResultData.Run.name == t.name).\
+                filter(ResultData.Run.purpose == args.purpose).\
                 order_by(ResultData.Run.id).all()
-        newest = results.pop()
-        cur = utils.results_to_dict(newest)
+        newest = []
+        for i in range(0, args.numruns):
+            newest.append(results.pop())
+        new_avg = utils.avg_results(newest)
         avg_results = utils.avg_results(results)
         print(f"{t.name} results")
-        utils.print_comparison_table(avg_results, cur)
+        utils.print_comparison_table(avg_results, new_avg)
         print("")
-        session.delete(newest)
+        for r in newest:
+             session.delete(r)
         session.commit()
