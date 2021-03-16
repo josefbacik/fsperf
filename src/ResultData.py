@@ -1,4 +1,5 @@
 import datetime
+import socket
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Table, Column, Integer, String, ForeignKey, DateTime,
                         Float)
@@ -13,6 +14,8 @@ class Run(Base):
     kernel = Column(String)
     config = Column(String)
     name = Column(String)
+    hostname = Column(String, default=socket.gethostname())
+    purpose = Column(String, default="continuous")
     time = Column(DateTime, default=datetime.datetime.utcnow)
 
     time_results = relationship("TimeResult", backref="runs",

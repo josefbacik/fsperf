@@ -1,3 +1,12 @@
 #!/bin/bash
 
+db_version=$(python3 manage.py db_version)
+cur_version=$(python3 manage.py version)
+
+if [ "$db_version" != "$cur_version" ]
+then
+	echo "Upgrading local database to match the code version"
+	python3 manage.py upgrade || exit 1
+fi
+
 python3 src/fsperf.py $@

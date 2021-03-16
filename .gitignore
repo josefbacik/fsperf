@@ -5,3 +5,5 @@ tests/__pycache__/
 *.swp
 firefox*.tar*
 www/*.html
+__pycache__/
+*.py[cod]
