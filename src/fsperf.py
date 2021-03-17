@@ -105,25 +105,28 @@ for s in sections:
 if args.testonly:
     today = datetime.date.today()
     week_ago = today - datetime.timedelta(days=7)
-    for t in tests:
-        if len(args.tests) and t.name not in args.tests:
-            continue
-        results = session.query(ResultData.Run).\
-                outerjoin(ResultData.FioResult).\
-                outerjoin(ResultData.DbenchResult).\
-                outerjoin(ResultData.TimeResult).\
-                filter(ResultData.Run.time >=week_ago).\
-                filter(ResultData.Run.name == t.name).\
-                filter(ResultData.Run.purpose == args.purpose).\
-                order_by(ResultData.Run.id).all()
-        newest = []
-        for i in range(0, args.numruns):
-            newest.append(results.pop())
-        new_avg = utils.avg_results(newest)
-        avg_results = utils.avg_results(results)
-        print(f"{t.name} results")
-        utils.print_comparison_table(avg_results, new_avg)
-        print("")
-        for r in newest:
-             session.delete(r)
-        session.commit()
+    for s in sections:
+        print(f"{s} test results")
+        for t in tests:
+            if len(args.tests) and t.name not in args.tests:
+                continue
+            results = session.query(ResultData.Run).\
+                    outerjoin(ResultData.FioResult).\
+                    outerjoin(ResultData.DbenchResult).\
+                    outerjoin(ResultData.TimeResult).\
+                    filter(ResultData.Run.time >=week_ago).\
+                    filter(ResultData.Run.name == t.name).\
+                    filter(ResultData.Run.purpose == args.purpose).\
+                    filter(ResultData.Run.config == s).\
+                    order_by(ResultData.Run.id).all()
+            newest = []
+            for i in range(0, args.numruns):
+                newest.append(results.pop())
+            new_avg = utils.avg_results(newest)
+            avg_results = utils.avg_results(results)
+            print(f"{t.name} results")
+            utils.print_comparison_table(avg_results, new_avg)
+            print("")
+            for r in newest:
+                 session.delete(r)
+            session.commit()
