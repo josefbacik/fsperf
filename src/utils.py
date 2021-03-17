@@ -6,6 +6,47 @@ import texttable
 import itertools
 import numbers
 
+LOWER_IS_BETTER = 0
+HIGHER_IS_BETTER = 1
+value_mapping = {
+    'read_io_bytes': HIGHER_IS_BETTER,
+    'elapsed': LOWER_IS_BETTER,
+    'sys_cpu': LOWER_IS_BETTER,
+    'read_lat_ns_min': LOWER_IS_BETTER,
+    'read_lat_ns_max': LOWER_IS_BETTER,
+    'read_clat_ns_p50': LOWER_IS_BETTER,
+    'read_clat_ns_p99': LOWER_IS_BETTER,
+    'read_iops': HIGHER_IS_BETTER,
+    'read_io_kbytes': HIGHER_IS_BETTER,
+    'read_bw_bytes': HIGHER_IS_BETTER,
+    'write_lat_ns_min': LOWER_IS_BETTER,
+    'write_lat_ns_max': LOWER_IS_BETTER,
+    'write_iops': HIGHER_IS_BETTER,
+    'write_io_kbytes': HIGHER_IS_BETTER,
+    'write_bw_bytes': HIGHER_IS_BETTER,
+    'write_clat_ns_p50': LOWER_IS_BETTER,
+    'write_clat_ns_p99': LOWER_IS_BETTER,
+    'throughput': HIGHER_IS_BETTER,
+
+    # These are all latency values from dbench
+    'ntcreatex': LOWER_IS_BETTER,
+    'close': LOWER_IS_BETTER,
+    'rename': LOWER_IS_BETTER,
+    'unlink': LOWER_IS_BETTER,
+    'deltree': LOWER_IS_BETTER,
+    'mkdir': LOWER_IS_BETTER,
+    'qpathinfo': LOWER_IS_BETTER,
+    'qfileinfo': LOWER_IS_BETTER,
+    'qfsinfo': LOWER_IS_BETTER,
+    'sfileinfo': LOWER_IS_BETTER,
+    'find': LOWER_IS_BETTER,
+    'writex': LOWER_IS_BETTER,
+    'readx': LOWER_IS_BETTER,
+    'lockx': LOWER_IS_BETTER,
+    'unlockx': LOWER_IS_BETTER,
+    'flush': LOWER_IS_BETTER,
+}
+
 # Shamelessly copied from stackoverflow
 def mkdir_p(path):
     try:
@@ -64,13 +105,17 @@ def pct_diff(a, b):
         return 0
     return ((b - a) / a) * 100
 
-def diff_string(a, b):
+def diff_string(a, b, better):
     OK = '\033[92m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
     diff = pct_diff(a, b)
-    if diff >= 5.0:
-        return FAIL + "{:.2f}%".format(diff) + ENDC
+    if better == HIGHER_IS_BETTER:
+        if -diff >=  5.0:
+            return FAIL + "{:.2f}%".format(diff) + ENDC
+    else:
+        if diff >= 5.0:
+            return FAIL + "{:.2f}%".format(diff) + ENDC
     return OK + "{:.2f}%".format(diff) + ENDC
 
 def check_regression(baseline, recent, threshold):
@@ -80,17 +125,21 @@ def check_regression(baseline, recent, threshold):
     nr_fail = 0
     for k,v in baseline.items():
         diff = pct_diff(v, recent[k]['value'])
-        # Right now we have no way to know which key direction means something
-        # good or bad, so just treat anything |diff| > thresh as a regression,
-        # then at least we can at least look at the results and figure it out
-        # for ourselves.
-        if diff < 0:
-            diff = -diff
-        if diff > threshold:
-            recent[k]['regression'] = True
-            nr_fail += 1
+        better = HIGHER_IS_BETTER
+        if k in value_mapping:
+            better = value_mapping[k]
+        if better == HIGHER_IS_BETTER:
+            if -diff > threshold:
+                recent[k]['regression'] = True
+                nr_fail += 1
+            else:
+                recent[k]['regression'] = False
         else:
-            recent[k]['regression'] = False
+            if diff > threshold:
+                recent[k]['regression'] = True
+                nr_fail += 1
+            else:
+                recent[k]['regression'] = False
     return nr_fail >= fail_thresh
 
 def print_comparison_table(baseline, results):
@@ -101,7 +150,10 @@ def print_comparison_table(baseline, results):
     table.set_cols_align(['l', 'r', 'r', 'r'])
     table_rows = [["metric", "baseline", "current", "diff"]]
     for k,v in baseline.items():
-        diff_str = diff_string(v, results[k])
+        better = HIGHER_IS_BETTER
+        if k in value_mapping:
+            better = value_mapping[k]
+        diff_str = diff_string(v, results[k], better)
         cur = [k, v, results[k], diff_str]
         table_rows.append(cur)
     table.add_rows(table_rows)
