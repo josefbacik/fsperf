@@ -16,6 +16,7 @@ class PerfTest():
 class FioTest(PerfTest):
     def record_results(self, run, results):
         json_data = open("{}/{}.json".format(results, self.name))
+        data = json.load(json_data, cls=FioResultDecoder.FioResultDecoder)
         for j in data['jobs']:
             r = ResultData.FioResult()
             r.load_from_dict(j)
