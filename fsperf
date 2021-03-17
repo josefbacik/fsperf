@@ -1,5 +1,8 @@
 #!/bin/bash
 
+MYPATH=$(realpath $0)
+cd $(dirname $MYPATH)
+
 db_version=$(python3 manage.py db_version)
 cur_version=$(python3 manage.py version)
 
