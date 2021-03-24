@@ -5,6 +5,7 @@ import errno
 import texttable
 import itertools
 import numbers
+import datetime
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -72,7 +73,7 @@ def run_command(cmd, outputfile=None):
     print("Command '{}' failed to run".format(cmd))
     sys.exit(1)
 
-def results_to_dict(run):
+def results_to_dict(run, include_time=False):
     ret_dict = {}
     sub_results = list(itertools.chain(run.time_results, run.fio_results,
                                        run.dbench_results))
@@ -83,6 +84,8 @@ def results_to_dict(run):
             if "id" in k:
                 continue
             ret_dict[k] = getattr(r, k)
+    if include_time:
+        ret_dict['time'] = run.time
     return ret_dict
 
 def avg_results(results):
