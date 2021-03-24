@@ -4,6 +4,6 @@ fsperf-results.db
 tests/__pycache__/
 *.swp
 firefox*.tar*
-www/*.html
+www/*
 __pycache__/
 *.py[cod]
