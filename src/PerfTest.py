@@ -25,7 +25,7 @@ class FioTest(PerfTest):
     def test(self, run, directory, results):
         command = "fio --output-format=json"
         command += " --output={}/{}.json".format(results, self.name)
-        command += " --alloc-size 98304"
+        command += " --alloc-size 98304 --allrandrepeat=1"
         command += " --directory {} ".format(directory)
         command += self.command
         utils.run_command(command)
