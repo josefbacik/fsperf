@@ -25,12 +25,12 @@ def run_test(args, session, config, section, test):
             test.setup()
             run = ResultData.Run(kernel=platform.release(), config=section,
                                  name=test.name, purpose=args.purpose)
-            test.test(run, config.get(section, 'directory'), "results")
+            test.test(run, config, "results")
             session.add(run)
             session.commit()
         finally:
             if config.has_option(section, 'mount'):
-                run_command("umount {}".format(config.get(section, 'directory')))
+                run_command("umount {}".format(config.get('main', 'directory')))
     return 0
 
 parser = argparse.ArgumentParser()
@@ -51,6 +51,13 @@ args = parser.parse_args()
 
 config = configparser.ConfigParser()
 config.read('local.cfg')
+if not config.has_section('main'):
+    print("Must have a [main] section in local.cfg")
+    sys.exit(1)
+
+if not config.get('main', 'directory'):
+    print("Must specify 'directory' in [main]")
+    sys.exit(1)
 
 disabled_tests = []
 failed_tests = []
@@ -62,6 +69,7 @@ with open('disabled-tests') as f:
 sections = [args.config]
 if args.config is None:
     sections = config.sections()
+    sections.remove('main')
 elif not config.has_section(args.config):
     print("No section '{}' in local.cfg".format(args.config))
     sys.exit(1)
@@ -90,9 +98,6 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
                 tests.append(c())
 
 for s in sections:
-    if not config.has_option(s, "directory"):
-        print("Must specify a directory option in section {}".format(s))
-        sys.exit(1)
     for t in tests:
         if t.__class__.__name__ in disabled_tests:
             print("Skipping {}".format(t.__class__.__name__))

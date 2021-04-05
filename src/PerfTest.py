@@ -10,7 +10,7 @@ class PerfTest():
 
     def setup(self):
         pass
-    def test(self, run, directory, results):
+    def test(self, run, config, results):
         pass
 
 class FioTest(PerfTest):
@@ -22,7 +22,8 @@ class FioTest(PerfTest):
             r.load_from_dict(j)
             run.fio_results.append(r)
 
-    def test(self, run, directory, results):
+    def test(self, run, config, results):
+        directory = config.get('main', 'directory')
         command = "fio --output-format=json"
         command += " --output={}/{}.json".format(results, self.name)
         command += " --alloc-size 98304 --allrandrepeat=1"
@@ -38,7 +39,8 @@ class TimeTest(PerfTest):
         r.elapsed = elapsed
         run.time_results.append(r)
 
-    def test(self, run, directory, results):
+    def test(self, run, config, results):
+        directory = config.get('main', 'directory')
         command = self.command.replace('DIRECTORY', directory)
         start = timer()
         utils.run_command(command)
@@ -51,7 +53,8 @@ class DbenchTest(PerfTest):
         r.load_from_dict(result_dict)
         run.dbench_results.append(r)
 
-    def test(self, run, directory, results):
+    def test(self, run, config, results):
+        directory = config.get('main', 'directory')
         command = "dbench " + self.command + " -D {}".format(directory)
         fd = open("{}/{}.txt".format(results, self.name), "w+")
         utils.run_command(command, fd)
