@@ -9,7 +9,7 @@ class PerfTest():
     command = ""
     need_remount_after_setup = False
 
-    def setup(self):
+    def setup(self, config):
         pass
     def test(self, run, config, results):
         pass

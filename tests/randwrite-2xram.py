@@ -9,6 +9,6 @@ class Randwrite2xRam(FioTest):
                "--size=SIZE --numjobs=4 --bs=4k --fsync_on_close=0 "
                "--end_fsync=0")
 
-    def setup(self):
+    def setup(self, config):
         mem = psutil.virtual_memory()
         self.command = self.command.replace('SIZE', str(mem.total*2))
