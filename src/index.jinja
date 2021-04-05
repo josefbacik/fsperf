@@ -10,7 +10,7 @@
     <tr><td>Test</td><td>Status</td></tr>
     {% for t in tests %}
         <tr>
-            <td><a href="/{{ t + ".html" }}">{{ t }}</a></td>
+            <td><a href="{{ t + ".html" }}">{{ t }}</a></td>
             {% if recent[c][t]['regression'] %}
                 <td class="failing">FAIL</td>
             {% else %}
