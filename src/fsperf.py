@@ -23,6 +23,11 @@ def run_test(args, session, config, section, test):
             run_command(config.get(section, 'mount'))
         try:
             test.setup()
+            if (test.need_remount_after_setup and
+                config.has_option(section, 'mount')):
+                run_command("umount {}".format(config.get('main', 'directory')))
+                run_command(config.get(section, 'mount'))
+
             run = ResultData.Run(kernel=platform.release(), config=section,
                                  name=test.name, purpose=args.purpose)
             test.test(run, config, "results")

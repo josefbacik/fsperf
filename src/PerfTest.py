@@ -7,6 +7,7 @@ from timeit import default_timer as timer
 class PerfTest():
     name = ""
     command = ""
+    need_remount_after_setup = False
 
     def setup(self):
         pass
