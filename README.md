@@ -9,40 +9,34 @@ supports basic timing tests and `dbench` tests.
 # Configuration
 
 In order to configure the suite you need to create a `local.cfg` file in the
-base of the fsperf directory.  This file takes the format normal INI files.  The
-options that can be specified are
+base of the fsperf directory.  This file takes the format normal INI files.  You
+must specify a `[main]` section with the following required options
+
+  * `directory` - the directory to run the performance jobs in.
+
+Then subsequently you must specify configs, which whatever name you wish to use.
+These take the following optional options
 
   * `mkfs` - if specified this will be run between every test.  This is the full
     mkfs command needed for your test environment.
   * `mount` - the command to mount the fs.  If specified the fs will be
     unmounted between each test.
-  * `directory` - the directory to run the fio jobs in.  This _must_ be
-    specified regardless of wether you mount or mkfs in between runs.
-
-The section that gets run if you don't specify an option is `default`.  So a
-sample local.cfg would look like this
+  * `device` - the device that will be used for this section.
+  * `iosched` - Must match one of the options in
+    `/sys/block/{device}/queue/scheduler`.
 
 ```
-[default]
-mkfs=mkfs.btrfs -f /dev/nvme0n1
-mount=mount -o noatime /dev/nvme0n1 /mnt/btrfs-test
-directory=/mnt/btrfs-test
+[main]
+directory=/mnt/test
+
+[btrfs]
+device=/dev/nvme0n1
+mkfs=mkfs.btrfs -f
+mount=mount -o noatime
 ```
 
 You can specify multiple configurations per file, and switch between them with
 the `-c` option for fsperf.
-
-# Setup
-
-The only thing that needs to be done before hand is to create your `local.cfg`
-and run the command
-
-```
-./setup
-```
-
-In the main directory of fsperf.  This will initialize the sqlite database that
-will contain the results of the fio runs.
 
 # How to run
 
@@ -96,11 +90,16 @@ We only compare the last run of the given test with the given configuration.  So
 if you have multiple sections in your configuration file, such as the following
 
 ```
-[default]
-directory=/mnt/btrfs-test
+[btrfs]
+device=/dev/nvme0n1
+mkfs=mkfs.btrfs -f
+mount=mount -o noatime
 
 [xfs]
-directory=/mnt/xfs-tests
+device=/dev/nvme0n1
+iosched=none
+mkfs=mkfs.xfs -f
+mount=mount -o noatime
 ```
 
 Only tests in the same configuration will be compared against each other.

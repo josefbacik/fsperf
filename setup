@@ -1,7 +1,0 @@
-#!/bin/bash
-
-if ! (which fio) >/dev/null ; then
-    echo "fio is not found. it should be installed to run fsperf" >&2
-    exit 1
-fi
-cat fsperf-sqlite.sql | sqlite3 fsperf-results.db
