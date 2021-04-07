@@ -73,6 +73,27 @@ def run_command(cmd, outputfile=None):
     print("Command '{}' failed to run".format(cmd))
     sys.exit(1)
 
+def setup_device(config, section):
+    device = os.path.basename(config.get(section, 'device'))
+    if config.has_option(section, 'iosched'):
+        with open(f'/sys/block/{device}/queue/scheduler', 'w') as f:
+            f.write(config.get(section, 'iosched'))
+
+def mkfs(config, section):
+    if not config.has_option(section, 'mkfs'):
+        return
+    device = config.get(section, 'device')
+    mkfs_cmd = config.get(section, 'mkfs')
+    run_command(f'{mkfs_cmd} {device}')
+
+def mount(config, section):
+    if not config.has_option(section, 'mount'):
+        return
+    device = config.get(section, 'device')
+    mnt = config.get('main', 'directory')
+    mount_cmd = config.get(section, 'mount')
+    run_command(f'{mount_cmd} {device} {mnt}')
+
 def results_to_dict(run, include_time=False):
     ret_dict = {}
     sub_results = list(itertools.chain(run.time_results, run.fio_results,

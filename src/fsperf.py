@@ -6,7 +6,7 @@ from subprocess import Popen
 import FioCompare
 import ResultData
 import PerfTest
-from utils import run_command
+from utils import run_command,mount,setup_device,mkfs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import importlib.util
@@ -17,10 +17,8 @@ import platform
 
 def run_test(args, session, config, section, test):
     for i in range(0, args.numruns):
-        if config.has_option(section, 'mkfs'):
-            run_command(config.get(section, 'mkfs'))
-        if config.has_option(section, 'mount'):
-            run_command(config.get(section, 'mount'))
+        mkfs(config, section)
+        mount(config, section)
         try:
             test.setup(config)
             if (test.need_remount_after_setup and
@@ -103,6 +101,7 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
                 tests.append(c())
 
 for s in sections:
+    setup_device(config, s)
     for t in tests:
         if t.__class__.__name__ in disabled_tests:
             print("Skipping {}".format(t.__class__.__name__))
