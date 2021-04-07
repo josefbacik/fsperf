@@ -22,7 +22,7 @@ def run_test(args, session, config, section, test):
         if config.has_option(section, 'mount'):
             run_command(config.get(section, 'mount'))
         try:
-            test.setup()
+            test.setup(config)
             if (test.need_remount_after_setup and
                 config.has_option(section, 'mount')):
                 run_command("umount {}".format(config.get('main', 'directory')))
