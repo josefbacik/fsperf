@@ -176,6 +176,6 @@ for t in tests:
         ax.set_xlim(datemin, datemax)
         fig.autofmt_xdate()
         plt.title(f"{t} results over time")
-        plt.legend()
-        plt.savefig(f"www/{t}_{k}.png")
+        plt.legend(bbox_to_anchor=(1.04, 1), borderaxespad=0)
+        plt.savefig(f"www/{t}_{k}.png", bbox_inches="tight")
         plt.close('all')
