@@ -48,6 +48,14 @@ value_mapping = {
     'flush': LOWER_IS_BETTER,
 }
 
+# We only mark the whole test as failed if these keys regress
+test_regression_keys = [
+    'read_bw_bytes',
+    'write_bw_bytes',
+    'throughput',
+    'elapsed'
+]
+
 # Shamelessly copied from stackoverflow
 def mkdir_p(path):
     try:
@@ -143,27 +151,32 @@ def diff_string(a, b, better):
     return OK + "{:.2f}%".format(diff) + ENDC
 
 def check_regression(baseline, recent, threshold):
-    fail_thresh = len(baseline.items()) * 10 / 100
-    if fail_thresh == 0:
-        fail_thresh = len(baseline.items())
+    nr_regress_keys = 0
     nr_fail = 0
     for k,v in baseline.items():
         diff = pct_diff(v, recent[k]['value'])
         better = HIGHER_IS_BETTER
         if k in value_mapping:
             better = value_mapping[k]
+        if k in test_regression_keys:
+            nr_regress_keys += 1
         if better == HIGHER_IS_BETTER:
             if -diff > threshold:
                 recent[k]['regression'] = True
-                nr_fail += 1
+                if k in test_regression_keys:
+                    nr_fail += 1
             else:
                 recent[k]['regression'] = False
         else:
             if diff > threshold:
                 recent[k]['regression'] = True
-                nr_fail += 1
+                if k in test_regression_keys:
+                    nr_fail += 1
             else:
                 recent[k]['regression'] = False
+    fail_thresh = nr_regress_keys * 10 / 100
+    if fail_thresh == 0:
+        fail_thresh = 1
     return nr_fail >= fail_thresh
 
 def print_comparison_table(baseline, results):
