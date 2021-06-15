@@ -130,6 +130,11 @@ def avg_results(results):
             else:
                 vals_dict[k].append(v)
     for k,v in vals_dict.items():
+        if len(v) == 1:
+            ret_dict[k] = {}
+            ret_dict[k]['mean'] = v[0]
+            ret_dict[k]['stdev'] = 0
+            continue
         mean = statistics.mean(v)
         stddev = statistics.stdev(v)
         ret_dict[k] = {}
@@ -156,12 +161,14 @@ def diff_string(a, b, better):
     OK = '\033[92m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
-    diff = pct_diff(a, b)
+    diff = pct_diff(a['mean'], b['mean'])
     if better == HIGHER_IS_BETTER:
-        if -diff >=  5.0:
+        threshold = a['mean'] - (a['stdev'] * 1.96)
+        if b['mean'] < threshold:
             return FAIL + "{:.2f}%".format(diff) + ENDC
     else:
-        if diff >= 5.0:
+        threshold = a['mean'] + (a['stdev'] * 1.96)
+        if b['mean'] > threshold:
             return FAIL + "{:.2f}%".format(diff) + ENDC
     return OK + "{:.2f}%".format(diff) + ENDC
 
@@ -199,15 +206,15 @@ def print_comparison_table(baseline, results):
     table = texttable.Texttable()
     table.set_precision(2)
     table.set_deco(texttable.Texttable.HEADER)
-    table.set_cols_dtype(['t', 'a', 'a', 't'])
-    table.set_cols_align(['l', 'r', 'r', 'r'])
-    table_rows = [["metric", "baseline", "current", "diff"]]
+    table.set_cols_dtype(['t', 'a', 'a', 'a', 't'])
+    table.set_cols_align(['l', 'r', 'r', 'r', 'r'])
+    table_rows = [["metric", "baseline", "current", "stdev", "diff"]]
     for k,v in baseline.items():
         better = HIGHER_IS_BETTER
         if k in value_mapping:
             better = value_mapping[k]
         diff_str = diff_string(v, results[k], better)
-        cur = [k, v, results[k], diff_str]
+        cur = [k, v['mean'], results[k]['mean'], v['stdev'], diff_str]
         table_rows.append(cur)
     table.add_rows(table_rows)
     print(table.draw())
