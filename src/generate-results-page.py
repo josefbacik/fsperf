@@ -110,10 +110,10 @@ for c in configs:
         three_week_avgs[c][t] = get_avgs(session, c, t, 21)
         four_week_avgs[c][t] = get_avgs(session, c, t, 28)
         recent[c][t]['regression'] = False
-        if (utils.check_regression(week_avgs[c][t], recent[c][t], 5) or
-            utils.check_regression(two_week_avgs[c][t], recent[c][t], 5) or
-            utils.check_regression(three_week_avgs[c][t], recent[c][t], 5) or
-            utils.check_regression(four_week_avgs[c][t], recent[c][t], 5)):
+        if (utils.check_regression(week_avgs[c][t], recent[c][t]) or
+            utils.check_regression(two_week_avgs[c][t], recent[c][t]) or
+            utils.check_regression(three_week_avgs[c][t], recent[c][t]) or
+            utils.check_regression(four_week_avgs[c][t], recent[c][t])):
             recent[c][t]['regression'] = True
 
 env = Environment(loader=FileSystemLoader('src'))

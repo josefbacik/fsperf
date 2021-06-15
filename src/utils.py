@@ -6,6 +6,7 @@ import texttable
 import itertools
 import numbers
 import datetime
+import statistics
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -120,16 +121,30 @@ def results_to_dict(run, include_time=False):
 def avg_results(results):
     ret_dict = {}
     nr = 0
+    vals_dict = {}
     for run in results:
         sub_results = results_to_dict(run)
         for k,v in sub_results.items():
-            if k not in ret_dict:
-                ret_dict[k] = v
+            if k not in vals_dict:
+                vals_dict[k] = [v]
             else:
-                ret_dict[k] += v
-        nr += 1
-    for k,v in ret_dict.items():
-        ret_dict[k] = v / nr
+                vals_dict[k].append(v)
+    for k,v in vals_dict.items():
+        mean = statistics.mean(v)
+        stddev = statistics.stdev(v)
+        ret_dict[k] = {}
+        loop = 1
+        while loop:
+            loop = 0
+            for val in v:
+                if stddev == 0:
+                    break
+                zval = (val - mean) / stddev
+                if zval > 3 or zval < -3:
+                    v.remove(val)
+                    loop = 1
+        ret_dict[k]['mean'] = statistics.mean(v)
+        ret_dict[k]['stdev'] = statistics.stdev(v)
     return ret_dict
 
 def pct_diff(a, b):
@@ -150,25 +165,26 @@ def diff_string(a, b, better):
             return FAIL + "{:.2f}%".format(diff) + ENDC
     return OK + "{:.2f}%".format(diff) + ENDC
 
-def check_regression(baseline, recent, threshold):
+def check_regression(baseline, recent):
     nr_regress_keys = 0
     nr_fail = 0
     for k,v in baseline.items():
-        diff = pct_diff(v, recent[k]['value'])
         better = HIGHER_IS_BETTER
         if k in value_mapping:
             better = value_mapping[k]
         if k in test_regression_keys:
             nr_regress_keys += 1
         if better == HIGHER_IS_BETTER:
-            if -diff > threshold:
+            threshold = v['mean'] - (v['stdev'] * 1.96)
+            if recent[k]['value'] < threshold:
                 recent[k]['regression'] = True
                 if k in test_regression_keys:
                     nr_fail += 1
             else:
                 recent[k]['regression'] = False
         else:
-            if diff > threshold:
+            threshold = v['mean'] + (v['stdev'] * 1.96)
+            if recent[k]['value'] > threshold:
                 recent[k]['regression'] = True
                 if k in test_regression_keys:
                     nr_fail += 1
