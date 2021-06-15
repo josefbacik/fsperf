@@ -11,7 +11,7 @@ import numbers
 
 def get_avgs(session, config, test, days):
     today = datetime.date.today()
-    thresh = today = datetime.timedelta(days=days)
+    thresh = today - datetime.timedelta(days=days)
     results = session.query(Run).\
         outerjoin(FioResult).\
         outerjoin(DbenchResult).\
