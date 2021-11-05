@@ -47,6 +47,8 @@ parser.add_argument('-n', '--numruns', type=int, default=1,
                     help="Run each test N number of times")
 parser.add_argument('-p', '--purpose', type=str, default="continuous",
                     help="Set the specific purpose for this run, useful for A/B testing")
+parser.add_argument('-C', '--compare', type=str,
+                    help="Configuration to compare this run to, used with -t")
 parser.add_argument('tests', nargs='*',
                     help="Specific test[s] to run.")
 
@@ -76,6 +78,13 @@ if args.config is None:
 elif not config.has_section(args.config):
     print("No section '{}' in local.cfg".format(args.config))
     sys.exit(1)
+
+compare_config = None
+if args.compare is not None:
+    compare_config = args.compare
+    if not config.has_section(compare_config):
+        print("No section '{}' in local.cfg".format(compare_config))
+        sys.exit(1)
 
 engine = create_engine('sqlite:///fsperf-results.db')
 ResultData.Base.metadata.create_all(engine)
@@ -119,18 +128,16 @@ if args.testonly:
         for t in tests:
             if len(args.tests) and t.name not in args.tests:
                 continue
-            results = session.query(ResultData.Run).\
-                    outerjoin(ResultData.FioResult).\
-                    outerjoin(ResultData.DbenchResult).\
-                    outerjoin(ResultData.TimeResult).\
-                    filter(ResultData.Run.time >=week_ago).\
-                    filter(ResultData.Run.name == t.name).\
-                    filter(ResultData.Run.purpose == args.purpose).\
-                    filter(ResultData.Run.config == s).\
-                    order_by(ResultData.Run.id).all()
+            results = utils.get_results(session, t.name, s, args.purpose,
+                                        week_ago)
             newest = []
-            for i in range(0, args.numruns):
-                newest.append(results.pop())
+            if compare_config:
+                newest = results
+                results = utils.get_results(session, t.name, compare_config,
+                                            args.purpose, week_ago)
+            else:
+                for i in range(0, args.numruns):
+                    newest.append(results.pop())
             new_avg = utils.avg_results(newest)
             avg_results = utils.avg_results(results)
             print(f"{t.name} results")

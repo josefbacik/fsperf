@@ -1,4 +1,5 @@
 from subprocess import Popen
+import ResultData
 import sys
 import os
 import errno
@@ -56,6 +57,17 @@ test_regression_keys = [
     'throughput',
     'elapsed'
 ]
+
+def get_results(session, name, config, purpose, time):
+    return session.query(ResultData.Run).\
+                outerjoin(ResultData.FioResult).\
+                outerjoin(ResultData.DbenchResult).\
+                outerjoin(ResultData.TimeResult).\
+                filter(ResultData.Run.time >= time).\
+                filter(ResultData.Run.name == name).\
+                filter(ResultData.Run.purpose == purpose).\
+                filter(ResultData.Run.config == config).\
+                order_by(ResultData.Run.id).all()
 
 # Shamelessly copied from stackoverflow
 def mkdir_p(path):
