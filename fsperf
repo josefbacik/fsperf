@@ -3,6 +3,12 @@
 MYPATH=$(realpath $0)
 cd $(dirname $MYPATH)
 
+if [ ! -f "fsperf-results.db" ]; then
+	echo "Creating fsperf-results database"
+	python3 manage.py version_control
+	python3 manage.py upgrade
+fi
+
 db_version=$(python3 manage.py db_version)
 cur_version=$(python3 manage.py version)
 
