@@ -6,6 +6,12 @@ device=/dev/nvme0n1
 mkfs=mkfs.btrfs -f
 mount=mount -o noatime
 
+[btrfs-raid1]
+device=/dev/vg/scratch0
+mkfs=mkfs.btrfs -f -draid1 -mraid1 /dev/vg/scratch1
+mount=mount -o noatime
+readpolicy=pid
+
 [xfs]
 device=/dev/nvme0n1
 iosched=none
