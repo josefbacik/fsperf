@@ -60,6 +60,11 @@ test_regression_keys = [
     'elapsed'
 ]
 
+class NotRunException(Exception):
+    def __init__(self, m):
+        super().__init__(m)
+        self.m = m
+
 def get_results(session, name, config, purpose, time):
     return session.query(ResultData.Run).\
                 outerjoin(ResultData.FioResult).\
