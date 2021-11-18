@@ -6,7 +6,7 @@ from subprocess import Popen
 import FioCompare
 import ResultData
 import PerfTest
-from utils import run_command,mount,setup_device,mkfs
+from utils import run_command,mount,setup_device,mkfs,NotRunException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import importlib.util
@@ -20,7 +20,7 @@ def run_test(args, session, config, section, test):
         mkfs(config, section)
         mount(config, section)
         try:
-            test.setup(config)
+            test.setup(config, section)
             if (test.need_remount_after_setup and
                 config.has_option(section, 'mount')):
                 run_command("umount {}".format(config.get('main', 'directory')))
@@ -31,6 +31,8 @@ def run_test(args, session, config, section, test):
             test.test(run, config, "results")
             session.add(run)
             session.commit()
+        except NotRunException as e:
+            print("Not run: {}".format(e))
         finally:
             if config.has_option(section, 'mount'):
                 run_command("umount {}".format(config.get('main', 'directory')))

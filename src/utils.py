@@ -8,6 +8,8 @@ import itertools
 import numbers
 import datetime
 import statistics
+import subprocess
+import re
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -57,6 +59,11 @@ test_regression_keys = [
     'throughput',
     'elapsed'
 ]
+
+class NotRunException(Exception):
+    def __init__(self, m):
+        super().__init__(m)
+        self.m = m
 
 def get_results(session, name, config, purpose, time):
     return session.query(ResultData.Run).\
@@ -230,3 +237,50 @@ def print_comparison_table(baseline, results):
         table_rows.append(cur)
     table.add_rows(table_rows)
     print(table.draw())
+
+def get_fstype(device):
+    fstype = subprocess.check_output("blkid -s TYPE -o value "+device, shell=True)
+    # strip the output b'btrfs\n'
+    return (str(fstype).removesuffix("\\n'")).removeprefix("b'")
+
+def get_fsid(device):
+    fsid = subprocess.check_output("blkid -s UUID -o value "+device, shell=True)
+    # Raw output is something like this
+    #    b'abcf123f-7e95-40cd-8322-0d32773cb4ec\n'
+    # strip off extra characters.
+    return str(fsid)[2:38]
+
+def get_readpolicies(device):
+    fsid = get_fsid(device)
+    sysfs = open("/sys/fs/btrfs/"+fsid+"/read_policy", "r")
+    # Strip '[ ]' around the active policy
+    policies = (((sysfs.read()).strip()).strip("[")).strip("]")
+    sysfs.close()
+    return policies
+
+def get_active_readpolicy(device):
+    fsid = get_fsid(device)
+    sysfs = open("/sys/fs/btrfs/"+fsid+"/read_policy", "r")
+    policies = (sysfs.read()).strip()
+    # Output is as below, pick the policy within '[ ]'
+    #   device [pid] latency
+    active = re.search(r"\[([A-Za-z0-9_]+)\]", policies)
+    sysfs.close()
+    return active.group(1)
+
+def set_readpolicy(device, policy="pid"):
+    if not policy in get_readpolicies(device):
+        print("Read policy '{}' is invalid".format(policy))
+        sys.exit(1)
+        return
+    fsid = get_fsid(device)
+    # Ran out of ideas why run_command fails.
+    # command = "echo "+policy+" > /sys/fs/btrfs/"+fsid+"/read_policy"
+    # run_command(command)
+    sysfs = open("/sys/fs/btrfs/"+fsid+"/read_policy", "w")
+    ret = sysfs.write(policy)
+    sysfs.close()
+
+def has_readpolicy(device):
+    fsid = get_fsid(device)
+    return os.path.exists("/sys/fs/btrfs/"+fsid+"/read_policy")
