@@ -124,19 +124,20 @@ for s in sections:
 
 if args.testonly:
     today = datetime.date.today()
-    week_ago = today - datetime.timedelta(days=7)
+    if args.purpose == "continuous":
+        age = today - datetime.timedelta(days=7)
+    else:
+        age = today - datetime.timedelta(days=365)
     for s in sections:
         print(f"{s} test results")
         for t in tests:
             if len(args.tests) and t.name not in args.tests:
                 continue
-            results = utils.get_results(session, t.name, s, args.purpose,
-                                        week_ago)
+            results = utils.get_results(session, t.name, s, args.purpose, age)
             newest = []
             if compare_config:
                 newest = results
-                results = utils.get_results(session, t.name, compare_config,
-                                            args.purpose, week_ago)
+                results = utils.get_results(session, t.name, compare_config, age)
             else:
                 for i in range(0, args.numruns):
                     newest.append(results.pop())
