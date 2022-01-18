@@ -54,6 +54,19 @@ def get_all_results(session, config, test):
         ret.append(utils.results_to_dict(r, include_time=True))
     return ret
 
+def get_values_for_key(results_array, key):
+    dates = []
+    values = []
+    found_nonzero = False
+    for run in results_array:
+        dates.append(run['time'])
+        values.append(run[key])
+        if run[key] > 0 or run[key] < 0:
+            found_nonzero = True
+    if found_nonzero:
+        return (dates, values)
+    return (None, None)
+
 engine = create_engine('sqlite:///fsperf-results.db')
 Session = sessionmaker()
 Session.configure(bind=engine)
@@ -137,7 +150,7 @@ for t in tests:
         datemax = None
         for c in configs:
             results = get_all_results(session, c, t)
-            (dates, values) = utils.get_values_for_key(results, k)
+            (dates, values) = get_values_for_key(results, k)
             if dates is None:
                 continue
 

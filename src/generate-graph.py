@@ -3,7 +3,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import argparse
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import numpy as np
 import datetime
 import utils
@@ -29,6 +28,21 @@ def get_all_purposes(session):
         results.append(i[0])
     return results
 
+def get_values_for_key(results_array, key):
+    runs = []
+    values = []
+    found_nonzero = False
+    count = 0
+    for run in results_array:
+        runs.append(count)
+        count += 1
+        values.append(run[key])
+        if run[key] > 0 or run[key] < 0:
+            found_nonzero = True
+    if found_nonzero:
+        return (runs, values)
+    return (None, None)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--test', type=str, required=True,
                     help="Test to generate the graph for")
@@ -40,9 +54,6 @@ engine = create_engine('sqlite:///fsperf-results.db')
 Session = sessionmaker()
 Session.configure(bind=engine)
 session = Session()
-
-locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
-formatter = mdates.ConciseDateFormatter(locator)
 
 purposes = get_all_purposes(session)
 
@@ -61,30 +72,20 @@ for k,v in last.items():
     fig, ax = plt.subplots()
 
     # format the ticks
-    ax.xaxis.set_major_locator(locator)
-    ax.xaxis.set_major_formatter(formatter)
+    #ax.xaxis.set_major_locator(locator)
+    #ax.xaxis.set_major_formatter(formatter)
 
-    datemin = None
-    datemax = None
     for p in purposes:
         print(f'getting results for {p}')
         results = get_all_results(session, p, args.test)
-        (dates, values) = utils.get_values_for_key(results, k)
-        if dates is None:
+        (runs, values) = get_values_for_key(results, k)
+        if runs is None:
             continue
 
-        # figure out the range
-        curmin = np.datetime64(dates[0], 'D')
-        curmax = np.datetime64(dates[-1], 'D') + 1
-        if not datemin or curmin < datemin:
-            datemin = curmin
-        if not datemax or curmax > datemax:
-            datemax = curmax
-        plt.plot(dates, values, label=p)
+        plt.plot(runs, values, label=p)
 
-    ax.set_xlim(datemin, datemax)
-    fig.autofmt_xdate()
     plt.title(f"{args.test} results over time")
     plt.legend(bbox_to_anchor=(1.04, 1), borderaxespad=0)
+    plt.show()
     plt.savefig(f"{args.dir}/{args.test}_{k}.png", bbox_inches="tight")
     plt.close('all')
