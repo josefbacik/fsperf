@@ -84,7 +84,7 @@ for k,v in last.items():
 
         plt.plot(runs, values, label=p)
 
-    plt.title(f"{args.test} results over time")
+    plt.title(f"{args.test} {k} results over time")
     plt.legend(bbox_to_anchor=(1.04, 1), borderaxespad=0)
     plt.show()
     plt.savefig(f"{args.dir}/{args.test}_{k}.png", bbox_inches="tight")
