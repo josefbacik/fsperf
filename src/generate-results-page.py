@@ -40,16 +40,6 @@ def get_last(session, config, test):
         ret[k] = {'value': v}
     return ret
 
-def get_last_test(session, test):
-    result = session.query(Run).\
-        outerjoin(FioResult).\
-        outerjoin(DbenchResult).\
-        outerjoin(TimeResult).\
-        filter(Run.name == test).\
-        filter(Run.purpose == "continuous").\
-        order_by(Run.id.desc()).first()
-    return utils.results_to_dict(result)
-
 def get_all_results(session, config, test):
     results = session.query(Run).\
         outerjoin(FioResult).\
@@ -63,19 +53,6 @@ def get_all_results(session, config, test):
     for r in results:
         ret.append(utils.results_to_dict(r, include_time=True))
     return ret
-
-def get_values_for_key(results_array, key):
-    dates = []
-    values = []
-    found_nonzero = False
-    for run in results_array:
-        dates.append(run['time'])
-        values.append(run[key])
-        if run[key] > 0 or run[key] < 0:
-            found_nonzero = True
-    if found_nonzero:
-        return (dates, values)
-    return (None, None)
 
 engine = create_engine('sqlite:///fsperf-results.db')
 Session = sessionmaker()
@@ -138,7 +115,7 @@ locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
 formatter = mdates.ConciseDateFormatter(locator)
 
 for t in tests:
-    last = get_last_test(session, t)
+    last = utils.get_last_test(session, t)
     for k,v in last.items():
         if not isinstance(v, numbers.Number):
             continue
@@ -160,7 +137,7 @@ for t in tests:
         datemax = None
         for c in configs:
             results = get_all_results(session, c, t)
-            (dates, values) = get_values_for_key(results, k)
+            (dates, values) = utils.get_values_for_key(results, k)
             if dates is None:
                 continue
 

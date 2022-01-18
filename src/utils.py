@@ -65,6 +65,15 @@ class NotRunException(Exception):
         super().__init__(m)
         self.m = m
 
+def get_last_test(session, test):
+    result = session.query(ResultData.Run).\
+        outerjoin(ResultData.FioResult).\
+        outerjoin(ResultData.DbenchResult).\
+        outerjoin(ResultData.TimeResult).\
+        filter(ResultData.Run.name == test).\
+        order_by(ResultData.Run.id.desc()).first()
+    return results_to_dict(result)
+
 def get_results(session, name, config, purpose, time):
     return session.query(ResultData.Run).\
                 outerjoin(ResultData.FioResult).\
@@ -75,6 +84,19 @@ def get_results(session, name, config, purpose, time):
                 filter(ResultData.Run.purpose == purpose).\
                 filter(ResultData.Run.config == config).\
                 order_by(ResultData.Run.id).all()
+
+def get_values_for_key(results_array, key):
+    dates = []
+    values = []
+    found_nonzero = False
+    for run in results_array:
+        dates.append(run['time'])
+        values.append(run[key])
+        if run[key] > 0 or run[key] < 0:
+            found_nonzero = True
+    if found_nonzero:
+        return (dates, values)
+    return (None, None)
 
 # Shamelessly copied from stackoverflow
 def mkdir_p(path):
