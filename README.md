@@ -6,6 +6,16 @@ framework for file system developers to be able to check their patches and make
 sure they do not regress in performance.  In addition to `fio` tests, `fsperf`
 supports basic timing tests and `dbench` tests.
 
+# Requirements
+The following python packages are required:
+  * migrate
+  * SQLAlchemy
+  * sqlalchemy-migrate
+  * texttable
+  * psutil
+  * jinja2
+  * matplotlib
+
 # Configuration
 
 In order to configure the suite you need to create a `local.cfg` file in the
