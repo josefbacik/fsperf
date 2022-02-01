@@ -53,6 +53,7 @@ parser.add_argument('-C', '--compare', type=str,
                     help="Configuration to compare this run to, used with -t")
 parser.add_argument('tests', nargs='*',
                     help="Specific test[s] to run.")
+parser.add_argument('--list', action='store_true', help="List all available tests")
 
 args = parser.parse_args()
 
@@ -111,13 +112,18 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
             if inspect.isclass(c) and issubclass(c, PerfTest.PerfTest):
                 tests.append(c())
 
+if args.list:
+    for t in tests:
+        print("{}".format(t.__class__.__name__))
+    sys.exit(1)
+
 for s in sections:
     setup_device(config, s)
     for t in tests:
         if t.__class__.__name__ in disabled_tests:
             print("Skipping {}".format(t.__class__.__name__))
             continue
-        if len(args.tests) and t.name not in args.tests:
+        if len(args.tests) and t.__class__.__name__ not in args.tests:
             continue
         print("Running {}".format(t.__class__.__name__))
         run_test(args, session, config, s, t)
