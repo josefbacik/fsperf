@@ -11,4 +11,5 @@ class Randwrite2xRam(FioTest):
 
     def setup(self, config, section):
         mem = psutil.virtual_memory()
-        self.command = self.command.replace('SIZE', str(mem.total*2))
+        self.command = self.command.replace('SIZE', str((mem.total*2)//4))
+
