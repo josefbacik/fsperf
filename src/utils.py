@@ -110,6 +110,16 @@ def run_command(cmd, outputfile=None):
     print("Command '{}' failed to run".format(cmd))
     sys.exit(1)
 
+def setup_cpu_governor(config):
+    if not config.has_option('main', 'cpugovernor'):
+        return
+    governor = config.get('main', 'cpugovernor')
+    dirpath = "/sys/devices/system/cpu"
+    for filename in os.listdir(dirpath):
+        if re.match("cpu\d+", filename):
+            with open(f'{dirpath}/{filename}/cpufreq/scaling_governor', 'w') as f:
+                f.write(governor)
+
 def setup_device(config, section):
     device = os.path.basename(config.get(section, 'device'))
     if config.has_option(section, 'iosched'):

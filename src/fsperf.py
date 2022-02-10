@@ -6,7 +6,7 @@ from subprocess import Popen
 import FioCompare
 import ResultData
 import PerfTest
-from utils import run_command,mount,setup_device,mkfs,NotRunException
+from utils import run_command,mount,setup_device,setup_cpu_governor,mkfs,NotRunException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import importlib.util
@@ -66,6 +66,8 @@ if not config.has_section('main'):
 if not config.get('main', 'directory'):
     print("Must specify 'directory' in [main]")
     sys.exit(1)
+
+setup_cpu_governor(config)
 
 disabled_tests = []
 failed_tests = []

@@ -23,6 +23,7 @@ base of the fsperf directory.  This file takes the format normal INI files.  You
 must specify a `[main]` section with the following required options
 
   * `directory` - the directory to run the performance jobs in.
+  * `cpugovernor` - the cpu governor to use for the run.
 
 Then subsequently you must specify configs, which whatever name you wish to use.
 These take the following optional options

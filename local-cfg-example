@@ -1,5 +1,6 @@
 [main]
 directory=/mnt/test
+cpugovernor=performance
 
 [btrfs]
 device=/dev/nvme0n1
