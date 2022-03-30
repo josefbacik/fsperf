@@ -117,8 +117,12 @@ def setup_cpu_governor(config):
     dirpath = "/sys/devices/system/cpu"
     for filename in os.listdir(dirpath):
         if re.match("cpu\d+", filename):
-            with open(f'{dirpath}/{filename}/cpufreq/scaling_governor', 'w') as f:
-                f.write(governor)
+            try:
+                with open(f'{dirpath}/{filename}/cpufreq/scaling_governor', 'w') as f:
+                    f.write(governor)
+            except OSError as exc:
+                print("cpu governor isn't enabled, skipping")
+                return
 
 def setup_device(config, section):
     device = os.path.basename(config.get(section, 'device'))
