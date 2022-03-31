@@ -75,6 +75,7 @@ failed_tests = []
 with open('disabled-tests') as f:
     for line in f:
         disabled_tests.append(line.rstrip())
+        print("Disabled {}".format(line.rstrip()))
 
 sections = [args.config]
 if args.config is None:
