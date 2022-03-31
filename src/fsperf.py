@@ -142,6 +142,8 @@ if args.testonly:
         for t in tests:
             if len(args.tests) and t.name not in args.tests:
                 continue
+            if t.__class__.__name__ in disabled_tests:
+                continue
             results = utils.get_results(session, t.name, s, args.purpose, age)
             newest = []
             if compare_config:
