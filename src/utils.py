@@ -199,20 +199,33 @@ def pct_diff(a, b):
         return 0
     return ((b - a) / a) * 100
 
-def diff_string(a, b, better):
-    OK = '\033[92m'
-    FAIL = '\033[91m'
+def color_str(s, color):
     ENDC = '\033[0m'
-    diff = pct_diff(a['mean'], b['mean'])
-    if better == HIGHER_IS_BETTER:
-        threshold = a['mean'] - (a['stdev'] * 1.96)
-        if b['mean'] < threshold:
-            return FAIL + "{:.2f}%".format(diff) + ENDC
+    return color + s + ENDC
+
+def diff_string(a, b, better):
+    DEFAULT = '\033[99m'
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    sig_delta = a['stdev'] * 1.96
+    lo_thresh = a['mean'] - sig_delta
+    hi_thresh = a['mean'] + sig_delta
+    below = b['mean'] < lo_thresh
+    above = b['mean'] > hi_thresh
+    higher_better = better == HIGHER_IS_BETTER
+
+    bad = (below and higher_better) or (above and not higher_better)
+    good = (above and higher_better) or (below and not higher_better)
+    if bad:
+        color = RED
+    elif good:
+        color = GREEN
     else:
-        threshold = a['mean'] + (a['stdev'] * 1.96)
-        if b['mean'] > threshold:
-            return FAIL + "{:.2f}%".format(diff) + ENDC
-    return OK + "{:.2f}%".format(diff) + ENDC
+        color = DEFAULT
+
+    diff = pct_diff(a['mean'], b['mean'])
+    diff_str = "{:.2f}%".format(diff)
+    return color_str(diff_str, color)
 
 def check_regression(baseline, recent):
     nr_regress_keys = 0
