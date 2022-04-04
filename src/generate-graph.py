@@ -21,11 +21,12 @@ def get_all_results(session, purpose, test):
         ret.append(utils.results_to_dict(r, include_time=True))
     return ret
 
-def get_all_purposes(session):
+def get_all_purposes(session, purposes):
     r = session.query(Run.purpose).distinct().all()
     results = []
     for i in r:
-        results.append(i[0])
+        if len(purposes) == 0 or i[0] in purposes:
+            results.append(i[0])
     return results
 
 def get_values_for_key(results_array, key):
@@ -48,6 +49,9 @@ parser.add_argument('-t', '--test', type=str, required=True,
                     help="Test to generate the graph for")
 parser.add_argument('-d', '--dir', type=str, default=".",
                     help="Directory to write the graphs to")
+parser.add_argument('-p', '--purposes', nargs="*", type=str, default=[],
+                    help="Purposes to graph")
+
 args = parser.parse_args()
 
 engine = create_engine('sqlite:///fsperf-results.db')
@@ -55,7 +59,7 @@ Session = sessionmaker()
 Session.configure(bind=engine)
 session = Session()
 
-purposes = get_all_purposes(session)
+purposes = get_all_purposes(session, args.purposes)
 
 last = utils.get_last_test(session, args.test)
 for k,v in last.items():
