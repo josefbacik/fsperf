@@ -8,10 +8,17 @@ class PerfTest():
     name = ""
     command = ""
     need_remount_after_setup = False
+    skip_mkfs_and_mount = False
+
+    # Set this if the test does something specific and isn't going to use the
+    # configuration options to change how the test is run.
+    oneoff = False
 
     def setup(self, config, section):
         pass
     def test(self, run, config, results):
+        pass
+    def teardown(self, config, results):
         pass
 
 class FioTest(PerfTest):
@@ -23,11 +30,15 @@ class FioTest(PerfTest):
             r.load_from_dict(j)
             run.fio_results.append(r)
 
-    def test(self, run, config, results):
-        directory = config.get('main', 'directory')
+    def default_cmd(self, results):
         command = "fio --output-format=json"
         command += " --output={}/{}.json".format(results, self.name)
         command += " --alloc-size 98304 --allrandrepeat=1 --randseed=12345"
+        return command
+
+    def test(self, run, config, results):
+        directory = config.get('main', 'directory')
+        command = self.default_cmd(results)
         command += " --directory {} ".format(directory)
         command += self.command
         utils.run_command(command)

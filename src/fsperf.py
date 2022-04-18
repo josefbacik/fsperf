@@ -17,8 +17,9 @@ import platform
 
 def run_test(args, session, config, section, test):
     for i in range(0, args.numruns):
-        mkfs(config, section)
-        mount(config, section)
+        if not t.skip_mkfs_and_mount:
+            mkfs(config, section)
+            mount(config, section)
         try:
             test.setup(config, section)
             if (test.need_remount_after_setup and
@@ -34,8 +35,9 @@ def run_test(args, session, config, section, test):
         except NotRunException as e:
             print("Not run: {}".format(e))
         finally:
-            if config.has_option(section, 'mount'):
+            if not test.skip_mkfs_and_mount and config.has_option(section, 'mount'):
                 run_command("umount {}".format(config.get('main', 'directory')))
+            test.teardown(config, "results")
     return 0
 
 parser = argparse.ArgumentParser()
@@ -101,6 +103,7 @@ session = Session()
 utils.mkdir_p("results/")
 
 tests = []
+oneoffs = []
 for (dirpath, dirnames, filenames) in os.walk("tests/"):
     for f in filenames:
         if not f.endswith(".py"):
@@ -113,23 +116,41 @@ for (dirpath, dirnames, filenames) in os.walk("tests/"):
         for cname in attrs:
             c = getattr(m, cname)
             if inspect.isclass(c) and issubclass(c, PerfTest.PerfTest):
-                tests.append(c())
+                t = c()
+                if t.oneoff:
+                    oneoffs.append(t)
+                else:
+                    tests.append(t)
 
 if args.list:
+    print("Normal tests")
     for t in tests:
-        print("{}".format(t.__class__.__name__))
+        print("\t{}".format(t.__class__.__name__))
+    print("Oneoff tests")
+    for t in oneoffs:
+        print("\t{}".format(t.__class__.__name__))
     sys.exit(1)
 
+# Run the normal tests
 for s in sections:
     setup_device(config, s)
     for t in tests:
+        if len(args.tests) and t.__class__.__name__ not in args.tests:
+            continue
         if t.__class__.__name__ in disabled_tests:
             print("Skipping {}".format(t.__class__.__name__))
             continue
-        if len(args.tests) and t.__class__.__name__ not in args.tests:
-            continue
         print("Running {}".format(t.__class__.__name__))
         run_test(args, session, config, s, t)
+
+for t in oneoffs:
+    if t.__class__.__name__ in disabled_tests:
+        print("Skipping {}".format(t.__class__.__name__))
+        continue
+    if len(args.tests) and t.__class__.__name__ not in args.tests:
+        continue
+    print("Running {}".format(t.__class__.__name__))
+    run_test(args, session, config, "oneoff", t)
 
 if args.testonly:
     today = datetime.date.today()
