@@ -34,6 +34,8 @@ def get_last(session, config, test):
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
         order_by(Run.id.desc()).first()
+    if result is None:
+        return result
     results = utils.results_to_dict(result)
     ret = {}
     for k,v in results.items():
@@ -94,6 +96,12 @@ for c in configs:
     four_week_avgs[c] = {}
 
     for t in tests:
+        # Not all configs can run all tests, so if we don't have the test
+        # results for the given config simply skip the test
+        run = get_last(session, c, t)
+        if run is None:
+            recent[c][t] = None
+            continue
         recent[c][t] = get_last(session, c, t)
         week_avgs[c][t] = get_avgs(session, c, t, 7)
         two_week_avgs[c][t] = get_avgs(session, c, t, 14)
@@ -150,6 +158,8 @@ for t in tests:
         datemax = None
         for c in configs:
             results = get_all_results(session, c, t)
+            if len(results) == 0:
+                continue
             (dates, values) = get_values_for_key(results, k)
             if dates is None:
                 continue
