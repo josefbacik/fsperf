@@ -74,10 +74,13 @@ setup_cpu_governor(config)
 disabled_tests = []
 failed_tests = []
 
-with open('disabled-tests') as f:
-    for line in f:
-        disabled_tests.append(line.rstrip())
-        print("Disabled {}".format(line.rstrip()))
+try:
+    with open('disabled-tests') as f:
+        for line in f:
+            disabled_tests.append(line.rstrip())
+            print("Disabled {}".format(line.rstrip()))
+except FileNotFoundError:
+    pass
 
 sections = [args.config]
 if args.config is None:
