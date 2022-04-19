@@ -8,7 +8,7 @@
 <table class="runs">
     <tr><th class="runs" colspan="2">{{ c }}</th></tr>
     <tr><td>Test</td><td>Status</td></tr>
-    {% for t in tests %}
+    {% for t in tests if recent[c][t]%}
         <tr>
             <td><a href="{{ t + ".html" }}">{{ t }}</a></td>
             {% if recent[c][t]['regression'] %}
