@@ -4,7 +4,7 @@
     <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-{% for c in configs if recent[c][t] %}
+{% for c in configs if recent[c][test] %}
 <table class="results">
     <tr><th class="runs" colspan="6">{{ c }}</th></tr>
     <tr>
