@@ -100,6 +100,7 @@ for c in configs:
         # results for the given config simply skip the test
         run = get_last(session, c, t)
         if run is None:
+            print(f'no run for {t} in config {c}')
             recent[c][t] = None
             continue
         recent[c][t] = get_last(session, c, t)

@@ -15,6 +15,19 @@ import datetime
 import utils
 import platform
 
+def want_run_test(run_tests, disabled_tests, t):
+    if len(run_tests) == 0 and len(disabled_tests) == 0:
+        return True
+    if t.name in disabled_tests:
+        return False
+    if t.__class__.__name__ in disabled_tests:
+        return False
+    if t.name in run_tests:
+        return True
+    if t.__class__.__name__ in run_tests:
+        return True
+    return False
+
 def run_test(args, session, config, section, test):
     for i in range(0, args.numruns):
         if not t.skip_mkfs_and_mount:
@@ -138,19 +151,13 @@ if args.list:
 for s in sections:
     setup_device(config, s)
     for t in tests:
-        if len(args.tests) and t.__class__.__name__ not in args.tests:
-            continue
-        if t.__class__.__name__ in disabled_tests:
-            print("Skipping {}".format(t.__class__.__name__))
+        if not want_run_test(args.tests, disabled_tests, t):
             continue
         print("Running {}".format(t.__class__.__name__))
         run_test(args, session, config, s, t)
 
 for t in oneoffs:
-    if t.__class__.__name__ in disabled_tests:
-        print("Skipping {}".format(t.__class__.__name__))
-        continue
-    if len(args.tests) and t.__class__.__name__ not in args.tests:
+    if not want_run_test(args.tests, disabled_tests, t):
         continue
     print("Running {}".format(t.__class__.__name__))
     run_test(args, session, config, "oneoff", t)
@@ -164,9 +171,8 @@ if args.testonly:
     for s in sections:
         print(f"{s} test results")
         for t in tests:
-            if len(args.tests) and t.name not in args.tests:
-                continue
-            if t.__class__.__name__ in disabled_tests:
+            if not want_run_test(args.tests, disabled_tests, t):
+                print(f'skippin test {t.name}')
                 continue
             results = utils.get_results(session, t.name, s, args.purpose, age)
             newest = []
