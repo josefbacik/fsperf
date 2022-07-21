@@ -125,7 +125,7 @@ def setup_cpu_governor(config):
                 return
 
 def setup_device(config, section):
-    device = os.path.basename(config.get(section, 'device'))
+    device = os.path.basename(os.path.realpath(config.get(section, 'device')))
     if config.has_option(section, 'iosched'):
         with open(f'/sys/block/{device}/queue/scheduler', 'w') as f:
             f.write(config.get(section, 'iosched'))
