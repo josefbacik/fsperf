@@ -17,7 +17,7 @@
     <tr>
     {% for m in avgs[0][c][test].keys() %}
         <tr>
-            <td><a href="{{ test + '_' + m + '.png' }}">{{ m }}</a></td>
+            <td><a href="{{ test + '_' + c.replace(' ', '_')  + '_' + m + '.png' }}">{{ m }}</a></td>
             <td>{{ "%0.2f" | format(avgs[0][c][test][m]['mean']|float) }}</td>
             <td>{{ "%0.2f" | format(avgs[1][c][test][m]['mean']|float) }}</td>
             <td>{{ "%0.2f" | format(avgs[2][c][test][m]['mean']|float) }}</td>

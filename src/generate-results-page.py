@@ -8,6 +8,8 @@ import numpy as np
 import datetime
 import utils
 import numbers
+import multiprocessing
+import statistics
 
 def get_avgs(session, config, test, days):
     today = datetime.date.today()
@@ -65,9 +67,78 @@ def get_values_for_key(results_array, key):
         values.append(run[key])
         if run[key] > 0 or run[key] < 0:
             found_nonzero = True
-    if found_nonzero:
-        return (dates, values)
-    return (None, None)
+    if not found_nonzero:
+        return (None, None)
+
+    mean = statistics.mean(values)
+    stdev = statistics.stdev(values)
+
+    loop = True
+    while loop:
+        loop = False
+        for i in range(0, len(values)):
+            if stdev == 0:
+                break
+            zval = (values[i] - mean) / stdev
+            if zval > 3 or zval < -3:
+                del values[i]
+                del dates[i]
+                loop = True
+                break
+    if len(values) == 0:
+        return (None, None)
+    return (dates, values)
+
+def generate_graph(session, test, config):
+    last = utils.get_last_test(session, test)
+    results = get_all_results(session, config, test)
+    if len(results) == 0:
+        return
+
+    for k,v in last.items():
+        if not isinstance(v, numbers.Number):
+            continue
+        if "id" in k:
+            continue
+        if v == 0:
+            continue
+
+        configname = config.replace(" ", "_")
+        print(f'Generating graph for {test}_{configname}_{k}')
+        # Start a new figure
+        plt.figure()
+        fig, ax = plt.subplots()
+
+        # format the ticks
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(formatter)
+
+        (dates, values) = get_values_for_key(results, k)
+        if dates is None:
+            continue
+
+        # figure out the range
+        datemin = np.datetime64(dates[0], 'D')
+        datemax = np.datetime64(dates[-1], 'D') + 1
+
+        plt.plot(dates, values, label=config)
+
+        ax.set_xlim(datemin, datemax)
+        fig.autofmt_xdate()
+        plt.title(f"{test} {k} {config} results over time")
+        plt.legend(bbox_to_anchor=(1.04, 1), borderaxespad=0)
+        plt.savefig(f"www/{test}_{configname}_{k}.png", bbox_inches="tight")
+        plt.close('all')
+
+def generate_graphs(session, tests, configs):
+    tasks = []
+    for t in tests:
+        for c in configs:
+            tasks.append(multiprocessing.Process(target=generate_graph, args=([session, t, c])))
+    for t in tasks:
+        t.start()
+    for t in tasks:
+        t.join()
 
 engine = create_engine('sqlite:///fsperf-results.db')
 Session = sessionmaker()
@@ -136,47 +207,4 @@ f.close()
 locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
 formatter = mdates.ConciseDateFormatter(locator)
 
-for t in tests:
-    last = utils.get_last_test(session, t)
-    for k,v in last.items():
-        if not isinstance(v, numbers.Number):
-            continue
-        if "id" in k:
-            continue
-        if v == 0:
-            continue
-
-        print(f'Generating graph for {t}_{k}')
-        # Start a new figure
-        plt.figure()
-        fig, ax = plt.subplots()
-
-        # format the ticks
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(formatter)
-
-        datemin = None
-        datemax = None
-        for c in configs:
-            results = get_all_results(session, c, t)
-            if len(results) == 0:
-                continue
-            (dates, values) = get_values_for_key(results, k)
-            if dates is None:
-                continue
-
-            # figure out the range
-            curmin = np.datetime64(dates[0], 'D')
-            curmax = np.datetime64(dates[-1], 'D') + 1
-            if not datemin or curmin < datemin:
-                datemin = curmin
-            if not datemax or curmax > datemax:
-                datemax = curmax
-            plt.plot(dates, values, label=c)
-
-        ax.set_xlim(datemin, datemax)
-        fig.autofmt_xdate()
-        plt.title(f"{t} {k} results over time")
-        plt.legend(bbox_to_anchor=(1.04, 1), borderaxespad=0)
-        plt.savefig(f"www/{t}_{k}.png", bbox_inches="tight")
-        plt.close('all')
+generate_graphs(session, tests, configs)
