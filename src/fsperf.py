@@ -6,7 +6,7 @@ from subprocess import Popen
 import FioCompare
 import ResultData
 import PerfTest
-from utils import run_command,mount,setup_device,setup_cpu_governor,mkfs,NotRunException
+from utils import run_command,Mount,setup_device,setup_cpu_governor,mkfs,NotRunException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import importlib.util
@@ -30,27 +30,20 @@ def want_run_test(run_tests, disabled_tests, t):
 
 def run_test(args, session, config, section, test):
     for i in range(0, args.numruns):
-        if not t.skip_mkfs_and_mount:
-            mkfs(config, section)
-            mount(config, section)
-        try:
-            test.setup(config, section)
-            if (test.need_remount_after_setup and
-                config.has_option(section, 'mount')):
-                run_command("umount {}".format(config.get('main', 'directory')))
-                run_command(config.get(section, 'mount'))
-
-            run = ResultData.Run(kernel=platform.release(), config=section,
-                                 name=test.name, purpose=args.purpose)
-            test.test(run, config, "results")
-            session.add(run)
-            session.commit()
-        except NotRunException as e:
-            print("Not run: {}".format(e))
-        finally:
-            if not test.skip_mkfs_and_mount and config.has_option(section, 'mount'):
-                run_command("umount {}".format(config.get('main', 'directory')))
-            test.teardown(config, "results")
+        mkfs(test, config, section)
+        with Mount(test, config, section) as mnt:
+            try:
+                test.setup(config, section)
+                test.maybe_cycle_mount(mnt)
+                run = ResultData.Run(kernel=platform.release(), config=section,
+                                     name=test.name, purpose=args.purpose)
+                test.run(run, config, section, "results")
+                session.add(run)
+                session.commit()
+            except NotRunException as e:
+                print("Not run: {}".format(e))
+            finally:
+                test.teardown(config, "results")
     return 0
 
 parser = argparse.ArgumentParser()

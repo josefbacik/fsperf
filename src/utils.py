@@ -1,4 +1,4 @@
-from subprocess import Popen
+from subprocess import Popen, PIPE, DEVNULL, CalledProcessError
 import ResultData
 import sys
 import os
@@ -10,6 +10,7 @@ import datetime
 import statistics
 import subprocess
 import re
+import shlex
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -97,18 +98,12 @@ def mkdir_p(path):
 
 def run_command(cmd, outputfile=None):
     print("  running cmd '{}'".format(cmd))
-    need_close = False
     if not outputfile:
-        outputfile = open('/dev/null')
-        need_close = True
-    p = Popen(cmd.split(' '), stdout=outputfile, stderr=outputfile)
+        outputfile = DEVNULL
+    p = Popen(shlex.split(cmd), stdout=outputfile, stderr=outputfile)
     p.wait()
-    if need_close:
-        outputfile.close()
-    if p.returncode == 0:
-        return
-    print("Command '{}' failed to run".format(cmd))
-    sys.exit(1)
+    if p.returncode:
+        raise CalledProcessError(p.returncode, cmd)
 
 def setup_cpu_governor(config):
     if not config.has_option('main', 'cpugovernor'):
@@ -130,20 +125,50 @@ def setup_device(config, section):
         with open(f'/sys/block/{device}/queue/scheduler', 'w') as f:
             f.write(config.get(section, 'iosched'))
 
-def mkfs(config, section):
-    if not config.has_option(section, 'mkfs'):
+def want_mkfs(test, config, section):
+    return not test.skip_mkfs_and_mount and config.has_option(section, 'mkfs')
+
+def mkfs(test, config, section):
+    if not want_mkfs(test, config, section):
         return
     device = config.get(section, 'device')
     mkfs_cmd = config.get(section, 'mkfs')
     run_command(f'{mkfs_cmd} {device}')
 
-def mount(config, section):
-    if not config.has_option(section, 'mount'):
-        return
-    device = config.get(section, 'device')
-    mnt = config.get('main', 'directory')
-    mount_cmd = config.get(section, 'mount')
-    run_command(f'{mount_cmd} {device} {mnt}')
+def want_mnt(test, config, section):
+    return config.has_option(section, 'mount') and not test.skip_mkfs_and_mount
+
+class Mount:
+    def __init__(self, test, config, section):
+        self.live = False
+        if want_mnt(test, config, section):
+            self.want_mnt = True
+            self.mount_cmd = config.get(section, 'mount')
+            self.device = config.get(section, 'device')
+            self.mnt = config.get('main', 'directory')
+
+    def do_mount(self):
+        if self.want_mnt:
+            run_command(f'{self.mount_cmd} {self.device} {self.mnt}')
+            self.live = True
+
+    def do_umount(self):
+        if self.live:
+            run_command(f"umount {self.mnt}")
+
+    def cycle_mount(self):
+        self.do_umount()
+        self.do_mount()
+
+    def __enter__(self):
+        self.do_mount()
+        return self
+
+    def __exit__(self, et, ev, etb):
+        self.do_umount()
+        # re-raise
+        if et is not None:
+            return False
 
 def results_to_dict(run, include_time=False):
     ret_dict = {}
