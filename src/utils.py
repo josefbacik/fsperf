@@ -13,24 +13,10 @@ import re
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
-value_mapping = {
-    'read_io_bytes': HIGHER_IS_BETTER,
+
+METRIC_DIRECTIONS = {
     'elapsed': LOWER_IS_BETTER,
     'sys_cpu': LOWER_IS_BETTER,
-    'read_lat_ns_min': LOWER_IS_BETTER,
-    'read_lat_ns_max': LOWER_IS_BETTER,
-    'read_clat_ns_p50': LOWER_IS_BETTER,
-    'read_clat_ns_p99': LOWER_IS_BETTER,
-    'read_iops': HIGHER_IS_BETTER,
-    'read_io_kbytes': HIGHER_IS_BETTER,
-    'read_bw_bytes': HIGHER_IS_BETTER,
-    'write_lat_ns_min': LOWER_IS_BETTER,
-    'write_lat_ns_max': LOWER_IS_BETTER,
-    'write_iops': HIGHER_IS_BETTER,
-    'write_io_kbytes': HIGHER_IS_BETTER,
-    'write_bw_bytes': HIGHER_IS_BETTER,
-    'write_clat_ns_p50': LOWER_IS_BETTER,
-    'write_clat_ns_p99': LOWER_IS_BETTER,
     'throughput': HIGHER_IS_BETTER,
 
     # These are all latency values from dbench
@@ -51,6 +37,20 @@ value_mapping = {
     'unlockx': LOWER_IS_BETTER,
     'flush': LOWER_IS_BETTER,
 }
+
+def metric_direction(metric):
+    if "bytes" in metric:
+        return HIGHER_IS_BETTER
+    if "calls" in metric:
+        return LOWER_IS_BETTER
+    if "_iops" in metric:
+        return HIGHER_IS_BETTER
+    if "_ns_" in metric:
+        return LOWER_IS_BETTER
+    if metric in METRIC_DIRECTIONS:
+        return METRIC_DIRECTIONS[metric]
+    return LOWER_IS_BETTER
+
 
 # We only mark the whole test as failed if these keys regress
 test_regression_keys = [
@@ -231,9 +231,7 @@ def check_regression(baseline, recent):
     nr_regress_keys = 0
     nr_fail = 0
     for k,v in baseline.items():
-        better = HIGHER_IS_BETTER
-        if k in value_mapping:
-            better = value_mapping[k]
+        better = metric_direction(k)
         if k in test_regression_keys:
             nr_regress_keys += 1
         if better == HIGHER_IS_BETTER:
@@ -258,16 +256,18 @@ def check_regression(baseline, recent):
     return nr_fail >= fail_thresh
 
 def print_comparison_table(baseline, results):
-    table = texttable.Texttable()
+    table = texttable.Texttable(max_width=100)
     table.set_precision(2)
     table.set_deco(texttable.Texttable.HEADER)
     table.set_cols_dtype(['t', 'a', 'a', 'a', 't'])
     table.set_cols_align(['l', 'r', 'r', 'r', 'r'])
     table_rows = [["metric", "baseline", "current", "stdev", "diff"]]
-    for k,v in baseline.items():
-        better = HIGHER_IS_BETTER
-        if k in value_mapping:
-            better = value_mapping[k]
+    for k,v in sorted(baseline.items()):
+        if not v['mean']:
+            continue
+        if k not in results:
+            continue
+        better = metric_direction(k)
         diff_str = diff_string(v, results[k], better)
         cur = [k, v['mean'], results[k]['mean'], v['stdev'], diff_str]
         table_rows.append(cur)
