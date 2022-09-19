@@ -28,6 +28,9 @@ class Run(Base):
     dbench_results = relationship("DbenchResult", backref="runs",
                                   order_by="DbenchResult.id",
                                   cascade="all,delete")
+    fragmentation = relationship("Fragmentation", backref="runs",
+                                 order_by="Fragmentation.id",
+                                 cascade="all,delete")
 
 def is_stat(key, value):
     return not "id" in key and isinstance(value, numbers.Number)
@@ -101,6 +104,28 @@ class DbenchResult(Base):
     lockx = Column(Float, default=0.0)
     unlockx = Column(Float, default=0.0)
     flush = Column(Float, default=0.0)
+
+    def load_from_dict(self, inval):
+        for k in dir(self):
+            if k not in inval:
+                continue
+            setattr(self, k, inval[k])
+
+    def to_dict(self):
+        return result_to_dict(self)
+
+class Fragmentation(Base):
+    __tablename__ = 'fragmentation'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    bg_count = Column(Integer, default=0)
+    fragmented_bg_count = Column(Integer, default=0)
+    frag_pct_mean = Column(Float, default=0.0)
+    frag_pct_min = Column(Float, default=0.0)
+    frag_pct_p50 = Column(Float, default=0.0)
+    frag_pct_p95 = Column(Float, default=0.0)
+    frag_pct_p99 = Column(Float, default=0.0)
+    frag_pct_max = Column(Float, default=0.0)
 
     def load_from_dict(self, inval):
         for k in dir(self):

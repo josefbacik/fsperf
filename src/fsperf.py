@@ -66,6 +66,8 @@ parser.add_argument('-l', '--latency', action='store_true',
                     help="Compare latency values of the current run to old runs")
 parser.add_argument('-t', '--testonly', action='store_true',
                     help="Compare this run to previous runs, but do not store this run.")
+parser.add_argument('-F', '--fragmentation', action='store_true',
+                    help="include fragmentation tests in run")
 parser.add_argument('-n', '--numruns', type=int, default=1,
                     help="Run each test N number of times")
 parser.add_argument('-p', '--purpose', type=str, default="continuous",
@@ -124,25 +126,12 @@ session = Session()
 
 utils.mkdir_p("results/")
 
-tests = []
-oneoffs = []
-for (dirpath, dirnames, filenames) in os.walk("tests/"):
-    for f in filenames:
-        if not f.endswith(".py"):
-            continue
-        p = dirpath + '/' + f
-        spec = importlib.util.spec_from_file_location('module.name', p)
-        m = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(m)
-        attrs = set(dir(m)) - set(dir(PerfTest))
-        for cname in attrs:
-            c = getattr(m, cname)
-            if inspect.isclass(c) and issubclass(c, PerfTest.PerfTest):
-                t = c()
-                if t.oneoff:
-                    oneoffs.append(t)
-                else:
-                    tests.append(t)
+tests, oneoffs = utils.get_tests("tests/")
+
+if args.fragmentation:
+    frag_tests, frag_oneoffs = utils.get_tests("frag_tests/")
+    tests.extend(frag_tests)
+    oneoffs.extend(frag_oneoffs)
 
 if args.list:
     print("Normal tests")

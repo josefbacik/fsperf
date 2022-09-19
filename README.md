@@ -16,6 +16,11 @@ The following python packages are required:
   * jinja2
   * matplotlib
 
+For fragmentation analysis (-F), rust is required. Run
+`cargo build -r` in `src/frag/`
+and it will pull the necessary dependencies. In addition, btrd is required to
+be installed on PATH to collect btrfs bg/extent data.
+
 # Configuration
 
 In order to configure the suite you need to create a `local.cfg` file in the
@@ -122,3 +127,9 @@ different configurations.
 
 Sometimes you may need to disable a test, so simply add the test name to it's
 own line in the `disabled-tests` file in the root of the project directory.
+
+# Fragmentation tests
+
+A second set of tests which challenge the btrfs block_group/extent allocator
+are found in frag_tests/. Running fsperf with -F will add them to the list of
+eligible tests to run.

@@ -6,6 +6,7 @@ from timeit import default_timer as timer
 from subprocess import Popen, PIPE, DEVNULL
 
 RESULTS_DIR = "results"
+FRAG_DIR = "src/frag"
 
 class PerfTest:
     name = ""
@@ -47,6 +48,9 @@ class FioTest(PerfTest):
             r = ResultData.FioResult()
             r.load_from_dict(j)
             run.fio_results.append(r)
+        f = ResultData.Fragmentation()
+        f.load_from_dict(self.fragmentation)
+        run.fragmentation.append(f)
 
     def default_cmd(self, results):
         command = "fio --output-format=json"
@@ -60,6 +64,26 @@ class FioTest(PerfTest):
         command += " --directory {} ".format(directory)
         command += self.command
         utils.run_command(command)
+        self.collect_fragmentation(run, config)
+
+    def collect_fragmentation(self, run, config):
+        bg_dump_filename = f"{RESULTS_DIR}/bgs.txt"
+        with open(bg_dump_filename, 'w') as f:
+            try:
+                utils.run_command(f"btrd {FRAG_DIR}/bg-dump.btrd", f)
+            except Exception as e:
+                print(f"failed to collect fragmentation data: {e}. (Likely, running the btrd script OOMed)")
+                self.fragmentation = {}
+                return
+        frag_filename = f"{RESULTS_DIR}/{self.name}.frag"
+        with open(frag_filename, 'w') as f:
+            try:
+                utils.run_command(f"{FRAG_DIR}/target/release/btrfs-frag-view {RESULTS_DIR}/bgs.txt", f)
+            except Exception as e:
+                print(f"failed to analyze fragmentation data: {e}.")
+                self.fragmentation = {}
+                return
+        self.fragmentation = json.load(open(frag_filename))
 
 class TimeTest(PerfTest):
     def record_results(self, run):

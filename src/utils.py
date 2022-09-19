@@ -1,4 +1,5 @@
 from subprocess import Popen, PIPE, DEVNULL, CalledProcessError
+import PerfTest
 import ResultData
 import sys
 import os
@@ -11,6 +12,8 @@ import subprocess
 import re
 import shlex
 import collections
+import importlib.util
+import inspect
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -80,6 +83,7 @@ def get_results(session, name, config, purpose, time):
                 outerjoin(ResultData.FioResult).\
                 outerjoin(ResultData.DbenchResult).\
                 outerjoin(ResultData.TimeResult).\
+                outerjoin(ResultData.Fragmentation).\
                 filter(ResultData.Run.time >= time).\
                 filter(ResultData.Run.name == name).\
                 filter(ResultData.Run.purpose == purpose).\
@@ -173,7 +177,7 @@ class Mount:
 def results_to_dict(run, include_time=False):
     ret_dict = {}
     sub_results = list(itertools.chain(run.time_results, run.fio_results,
-                                       run.dbench_results))
+                                       run.dbench_results, run.fragmentation))
     for r in sub_results:
         ret_dict.update(r.to_dict())
     if include_time:
@@ -333,3 +337,25 @@ def set_readpolicy(device, policy="pid"):
 def has_readpolicy(device):
     fsid = get_fsid(device)
     return os.path.exists("/sys/fs/btrfs/"+fsid+"/read_policy")
+
+def get_tests(test_dir):
+    tests = []
+    oneoffs = []
+    for (dirpath, dirnames, filenames) in os.walk(test_dir):
+        for f in filenames:
+            if not f.endswith(".py"):
+                continue
+            p = dirpath + '/' + f
+            spec = importlib.util.spec_from_file_location('module.name', p)
+            m = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(m)
+            attrs = set(dir(m)) - set(dir(PerfTest))
+            for cname in attrs:
+                c = getattr(m, cname)
+                if inspect.isclass(c) and issubclass(c, PerfTest.PerfTest):
+                    t = c()
+                    if t.oneoff:
+                        oneoffs.append(t)
+                    else:
+                        tests.append(t)
+    return tests, oneoffs
