@@ -16,17 +16,20 @@ import utils
 import platform
 
 def want_run_test(run_tests, disabled_tests, t):
-    if len(run_tests) == 0 and len(disabled_tests) == 0:
-        return True
-    if t.name in disabled_tests:
+    names = [t.name, t.__class__.__name__]
+    if disabled_tests:
+        for name in names:
+            if name in disabled_tests:
+                print(f"{name} disabled!")
+                return False
+    if run_tests:
+        for name in names:
+            if name in run_tests:
+                print(f"{name} enabled!")
+                return True
+        print(f"{names} are not explicitly enabled ({run_tests})")
         return False
-    if t.__class__.__name__ in disabled_tests:
-        return False
-    if t.name in run_tests:
-        return True
-    if t.__class__.__name__ in run_tests:
-        return True
-    return False
+    return True
 
 def run_test(args, session, config, section, test):
     for i in range(0, args.numruns):
@@ -165,7 +168,7 @@ if args.testonly:
         print(f"{s} test results")
         for t in tests:
             if not want_run_test(args.tests, disabled_tests, t):
-                print(f'skippin test {t.name}')
+                print(f'skipping test {t.name}')
                 continue
             results = utils.get_results(session, t.name, s, args.purpose, age)
             newest = []
@@ -181,5 +184,5 @@ if args.testonly:
             utils.print_comparison_table(avg_results, new_avg)
             print("")
             for r in newest:
-                 session.delete(r)
+                session.delete(r)
             session.commit()
