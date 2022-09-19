@@ -1,0 +1,11 @@
+#!/bin/bash
+
+MYPATH=$(realpath $0)
+cd $(dirname $MYPATH)
+
+if [ ! -f "fsperf-results.db" ]; then
+	echo "Need an fsperf-results database. Run fsperf!"
+	exit 1
+fi
+
+python3 src/compare.py "$@"

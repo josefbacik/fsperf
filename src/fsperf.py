@@ -5,15 +5,25 @@ import sys
 from subprocess import Popen
 import FioCompare
 import ResultData
-import PerfTest
 from utils import run_command,Mount,setup_device,setup_cpu_governor,mkfs,NotRunException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import importlib.util
-import inspect
 import datetime
 import utils
+import compare
 import platform
+
+TEST_ONLY = "TMP-TEST-ONLY"
+
+def clean_testonly(session, sections, tests):
+    today = datetime.date.today()
+    age = today - datetime.timedelta(days=365)
+    for section in sections:
+        for test in tests:
+            results = utils.get_results(session, test.name, section, TEST_ONLY, age)
+            for r in results:
+                session.delete(r)
+    session.commit()
 
 def want_run_test(run_tests, disabled_tests, t):
     names = [t.name, t.__class__.__name__]
@@ -31,7 +41,7 @@ def want_run_test(run_tests, disabled_tests, t):
         return False
     return True
 
-def run_test(args, session, config, section, test):
+def run_test(args, session, config, section, purpose, test):
     for i in range(0, args.numruns):
         mkfs(test, config, section)
         with Mount(test, config, section) as mnt:
@@ -39,7 +49,7 @@ def run_test(args, session, config, section, test):
                 test.setup(config, section)
                 test.maybe_cycle_mount(mnt)
                 run = ResultData.Run(kernel=platform.release(), config=section,
-                                     name=test.name, purpose=args.purpose)
+                                     name=test.name, purpose=purpose)
                 test.run(run, config, section, "results")
                 session.add(run)
                 session.commit()
@@ -143,20 +153,27 @@ if args.list:
         print("\t{}".format(t.__class__.__name__))
     sys.exit(1)
 
+if args.testonly:
+    run_purpose = TEST_ONLY
+    # We might have exited uncleanly and left behind testonly results
+    clean_testonly(session, sections, tests)
+else:
+    run_purpose = args.purpose
+
 # Run the normal tests
-for s in sections:
-    setup_device(config, s)
+for section in sections:
+    setup_device(config, section)
     for t in tests:
         if not want_run_test(args.tests, disabled_tests, t):
             continue
         print("Running {}".format(t.__class__.__name__))
-        run_test(args, session, config, s, t)
+        run_test(args, session, config, section, run_purpose, t)
 
 for t in oneoffs:
     if not want_run_test(args.tests, disabled_tests, t):
         continue
     print("Running {}".format(t.__class__.__name__))
-    run_test(args, session, config, "oneoff", t)
+    run_test(args, session, config, "oneoff", run_purpose, t)
 
 if args.testonly:
     today = datetime.date.today()
@@ -164,25 +181,13 @@ if args.testonly:
         age = today - datetime.timedelta(days=7)
     else:
         age = today - datetime.timedelta(days=365)
-    for s in sections:
-        print(f"{s} test results")
+    for section in sections:
+        print(f"{section} test results")
         for t in tests:
             if not want_run_test(args.tests, disabled_tests, t):
                 print(f'skipping test {t.name}')
                 continue
-            results = utils.get_results(session, t.name, s, args.purpose, age)
-            newest = []
-            if compare_config:
-                newest = results
-                results = utils.get_results(session, t.name, compare_config, age)
-            else:
-                for i in range(0, args.numruns):
-                    newest.append(results.pop())
-            new_avg = utils.avg_results(newest)
-            avg_results = utils.avg_results(results)
-            print(f"{t.name} results")
-            utils.print_comparison_table(avg_results, new_avg)
-            print("")
-            for r in newest:
-                session.delete(r)
-            session.commit()
+            compare_section = compare_config if compare_config else section
+            compare.compare_results(session, compare_section, section, t, args.purpose, TEST_ONLY, age)
+    # We use the db to uniformly access test results. Clean up testonly results
+    clean_testonly(session, sections, tests)
