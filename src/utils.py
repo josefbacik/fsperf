@@ -14,6 +14,7 @@ import shlex
 import collections
 import importlib.util
 import inspect
+import numpy
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -84,6 +85,7 @@ def get_results(session, name, config, purpose, time):
                 outerjoin(ResultData.DbenchResult).\
                 outerjoin(ResultData.TimeResult).\
                 outerjoin(ResultData.Fragmentation).\
+                outerjoin(ResultData.LatencyTrace).\
                 filter(ResultData.Run.time >= time).\
                 filter(ResultData.Run.name == name).\
                 filter(ResultData.Run.purpose == purpose).\
@@ -101,12 +103,13 @@ def mkdir_p(path):
             raise
 
 def run_command(cmd, outputfile=None):
-    print("  running cmd '{}'".format(cmd))
+    print("  running cmd '{}' from dir {}".format(cmd, os.getcwd()))
     if not outputfile:
-        outputfile = DEVNULL
+        outputfile = PIPE
     p = Popen(shlex.split(cmd), stdout=outputfile, stderr=outputfile)
-    p.wait()
+    out, err = p.communicate()
     if p.returncode:
+        print(f"out: {out}, err: {err}")
         raise CalledProcessError(p.returncode, cmd)
 
 def setup_cpu_governor(config):
@@ -174,10 +177,89 @@ class Mount:
         if et is not None:
             return False
 
+class LatencyTracing:
+    def __init__(self, config, section, test):
+        self.ps = {}
+        self.latencies = {}
+        self.calls = {}
+        trace_fns = ""
+        if test.trace_fns:
+            trace_fns = test.trace_fns
+        elif config.has_option(section, 'trace_fns'):
+            trace_fns = config.get(section, 'trace_fns')
+        self.fns = trace_fns.split(",")
+
+    def start_latency_trace(self, fn):
+        # this sets the max size of a map in bpftrace
+        # in our case, this is a bound on the number of unique delays we trace
+        os.environ["BPFTRACE_MAP_KEYS_MAX"] = "65536"
+        kprobe = f"kprobe:{fn} {{ @start[tid] = nsecs; }}"
+        kretprobe = f"kretprobe:{fn} {{ if(@start[tid]) {{ $delay = nsecs - @start[tid]; @delays[$delay]++; }} delete(@start[tid]); }}"
+        end = "END { clear(@start); }"
+        self.ps[fn] = Popen(["bpftrace", "-e", f"{kprobe} {kretprobe} {end}"], text=True, stdout=PIPE, stderr=PIPE)
+
+    def collect_latency_trace(self, fn):
+        bt_p = self.ps[fn]
+        bt_p.terminate()
+        # ignore errors in latency tracing; better to let the whole run still complete.
+        try:
+            stdout, stderr = bt_p.communicate(timeout=15)
+        except subprocess.TimeoutExpired:
+            print("Couldn't terminate {fn} bpftrace. Kill it and move on.")
+            bt_p.kill()
+            return
+        if bt_p.returncode:
+            print(f"{fn} bpftrace had an error. stderr: {stderr.strip()}")
+            return
+        self.latencies[fn] = []
+        out = stdout.split('\n')
+        if len(out) == 65536:
+            raise OverflowError(f"too many unique delay values: {len(out)} while tracing {fn}. Increase BPFTRACE_MAP_KEYS_MAX above")
+        for l in out:
+            if not l:
+                continue
+            if 'Attaching' in l:
+                continue
+            lat_str, count_str = l.split(':')
+            lat_re = r"@delays\[(\d+)\]"
+            m = re.match(lat_re, lat_str)
+            if not m:
+                continue
+            lat = int(m.groups()[0])
+            count = int(count_str)
+            self.latencies[fn] += [lat] * count
+
+    def results(self):
+        r = []
+        for fn, lats in self.latencies.items():
+            if not lats:
+                continue
+            t = {}
+            t["function"] = fn
+            t["ns_mean"] = statistics.mean(lats)
+            t["ns_min"] = min(lats)
+            t["ns_p50"] = numpy.percentile(lats, 50)
+            t["ns_p95"] = numpy.percentile(lats, 95)
+            t["ns_p99"] = numpy.percentile(lats, 99)
+            t["ns_max"] = max(lats)
+            t["calls"] = len(lats)
+            r.append(t)
+        return r
+
+    def __enter__(self):
+        for fn in self.fns:
+            self.start_latency_trace(fn)
+        return self
+
+    def __exit__(self, et, ev, etb):
+        for fn in self.fns:
+            self.collect_latency_trace(fn)
+
 def results_to_dict(run, include_time=False):
     ret_dict = {}
     sub_results = list(itertools.chain(run.time_results, run.fio_results,
-                                       run.dbench_results, run.fragmentation))
+                                       run.dbench_results, run.fragmentation,
+                                       run.latency_traces))
     for r in sub_results:
         ret_dict.update(r.to_dict())
     if include_time:

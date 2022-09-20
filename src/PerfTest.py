@@ -11,6 +11,7 @@ FRAG_DIR = "src/frag"
 class PerfTest:
     name = ""
     command = ""
+    trace_fns = ""
     need_remount_after_setup = False
     skip_mkfs_and_mount = False
 
@@ -23,7 +24,7 @@ class PerfTest:
             mnt.cycle_mount()
 
     def run(self, run, config, section, results):
-        with utils.LatencyTracing(config, section) as lt:
+        with utils.LatencyTracing(config, section, self) as lt:
             self.test(run, config, results)
         self.lat_trace = lt
         self.record_results(run)
@@ -48,6 +49,10 @@ class FioTest(PerfTest):
             r = ResultData.FioResult()
             r.load_from_dict(j)
             run.fio_results.append(r)
+            for lt in self.lat_trace.results():
+                ltr = ResultData.LatencyTrace()
+                ltr.load_from_dict(lt)
+                run.latency_traces.append(ltr)
         f = ResultData.Fragmentation()
         f.load_from_dict(self.fragmentation)
         run.fragmentation.append(f)

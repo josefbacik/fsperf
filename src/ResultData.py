@@ -31,6 +31,9 @@ class Run(Base):
     fragmentation = relationship("Fragmentation", backref="runs",
                                  order_by="Fragmentation.id",
                                  cascade="all,delete")
+    latency_traces = relationship("LatencyTrace", backref="runs",
+                                  order_by="LatencyTrace.id",
+                                  cascade="all,delete")
 
 def is_stat(key, value):
     return not "id" in key and isinstance(value, numbers.Number)
@@ -135,3 +138,26 @@ class Fragmentation(Base):
 
     def to_dict(self):
         return result_to_dict(self)
+
+class LatencyTrace(Base):
+    __tablename__ = 'latency_traces'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    function = Column(String)
+    ns_mean = Column(Float, default=0.0)
+    ns_min = Column(Float, default=0.0)
+    ns_p50 = Column(Float, default=0.0)
+    ns_p95 = Column(Float, default=0.0)
+    ns_p99 = Column(Float, default=0.0)
+    ns_max = Column(Float, default=0.0)
+    calls = Column(Integer, default=0)
+
+    def load_from_dict(self, inval):
+        for k in dir(self):
+            if k not in inval:
+                continue
+            setattr(self, k, inval[k])
+
+    def to_dict(self):
+        items = result_to_dict(self).items()
+        return { f"{self.function}_{k}": v for (k, v) in items }
