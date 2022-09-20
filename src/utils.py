@@ -5,12 +5,12 @@ import os
 import errno
 import texttable
 import itertools
-import numbers
 import datetime
 import statistics
 import subprocess
 import re
 import shlex
+import collections
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -175,48 +175,36 @@ def results_to_dict(run, include_time=False):
     sub_results = list(itertools.chain(run.time_results, run.fio_results,
                                        run.dbench_results))
     for r in sub_results:
-        for k in vars(r):
-            if not isinstance(getattr(r, k), numbers.Number):
-                continue
-            if "id" in k:
-                continue
-            ret_dict[k] = getattr(r, k)
+        ret_dict.update(r.to_dict())
     if include_time:
         ret_dict['time'] = run.time
     return ret_dict
 
+def filter_outliers(vs, mean, stdev):
+    def z(v, mean, stdev):
+        if not stdev or not mean:
+            return 0
+        return (v - mean) / stdev
+    return [v for v in vs if abs(z(v, mean, stdev)) > 3]
+
 def avg_results(results):
     ret_dict = {}
-    nr = 0
-    vals_dict = {}
+    vals_dict = collections.defaultdict(list)
     for run in results:
-        sub_results = results_to_dict(run)
-        for k,v in sub_results.items():
-            if k not in vals_dict:
-                vals_dict[k] = [v]
-            else:
-                vals_dict[k].append(v)
-    for k,v in vals_dict.items():
-        if len(v) == 1:
-            ret_dict[k] = {}
-            ret_dict[k]['mean'] = v[0]
+        run_results = results_to_dict(run)
+        for k,v in run_results.items():
+            vals_dict[k].append(v)
+    for k,vs in vals_dict.items():
+        ret_dict[k] = {}
+        if len(vs) == 1:
+            ret_dict[k]['mean'] = vs[0]
             ret_dict[k]['stdev'] = 0
             continue
-        mean = statistics.mean(v)
-        stddev = statistics.stdev(v)
-        ret_dict[k] = {}
-        loop = 1
-        while loop:
-            loop = 0
-            for val in v:
-                if stddev == 0:
-                    break
-                zval = (val - mean) / stddev
-                if zval > 3 or zval < -3:
-                    v.remove(val)
-                    loop = 1
-        ret_dict[k]['mean'] = statistics.mean(v)
-        ret_dict[k]['stdev'] = statistics.stdev(v)
+        mean = statistics.mean(vs)
+        stdev = statistics.stdev(vs)
+        filtered = filter_outliers(vs, mean, stdev)
+        ret_dict[k]['mean'] = statistics.mean(vs)
+        ret_dict[k]['stdev'] = statistics.stdev(vs)
     return ret_dict
 
 def pct_diff(a, b):

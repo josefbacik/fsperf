@@ -1,4 +1,5 @@
 import datetime
+import numbers
 import socket
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Table, Column, Integer, String, ForeignKey, DateTime,
@@ -27,6 +28,12 @@ class Run(Base):
     dbench_results = relationship("DbenchResult", backref="runs",
                                   order_by="DbenchResult.id",
                                   cascade="all,delete")
+
+def is_stat(key, value):
+    return not "id" in key and isinstance(value, numbers.Number)
+
+def result_to_dict(result):
+    return { k: v for (k, v) in vars(result).items() if is_stat(k, v) }
 
 class FioResult(Base):
     __tablename__ = 'fio_results'
@@ -61,11 +68,17 @@ class FioResult(Base):
                 continue
             setattr(self, k, inval[k])
 
+    def to_dict(self):
+        return result_to_dict(self)
+
 class TimeResult(Base):
     __tablename__ = 'time_results'
     id = Column(Integer, primary_key=True)
     run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
     elapsed = Column(Float, default=0.0)
+
+    def to_dict(self):
+        return result_to_dict(self)
 
 class DbenchResult(Base):
     __tablename__ = 'dbench_results'
@@ -94,3 +107,6 @@ class DbenchResult(Base):
             if k not in inval:
                 continue
             setattr(self, k, inval[k])
+
+    def to_dict(self):
+        return result_to_dict(self)
