@@ -182,12 +182,14 @@ class LatencyTracing:
         self.ps = {}
         self.latencies = {}
         self.calls = {}
+        self.fns = []
         trace_fns = ""
         if test.trace_fns:
             trace_fns = test.trace_fns
         elif config.has_option(section, 'trace_fns'):
             trace_fns = config.get(section, 'trace_fns')
-        self.fns = trace_fns.split(",")
+        if len(trace_fns) > 0:
+            self.fns = trace_fns.split(",")
 
     def start_latency_trace(self, fn):
         # this sets the max size of a map in bpftrace
