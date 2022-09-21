@@ -148,6 +148,7 @@ def want_mnt(test, config, section):
 class Mount:
     def __init__(self, test, config, section):
         self.live = False
+        self.want_mnt = False
         if want_mnt(test, config, section):
             self.want_mnt = True
             self.mount_cmd = config.get(section, 'mount')
