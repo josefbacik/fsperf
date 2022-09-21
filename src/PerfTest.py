@@ -26,50 +26,27 @@ class PerfTest:
     def run(self, run, config, section, results):
         with utils.LatencyTracing(config, section, self) as lt:
             self.test(run, config, results)
-        self.lat_trace = lt
+        self.latency_traces = lt.results()
+        self.collect_fragmentation(run, config)
         self.record_results(run)
 
     def setup(self, config, section):
         pass
 
     def record_results(self, run):
-        raise NotImplementedError
+        for lt in self.latency_traces:
+            ltr = ResultData.LatencyTrace()
+            ltr.load_from_dict(lt)
+            run.latency_traces.append(ltr)
+        f = ResultData.Fragmentation()
+        f.load_from_dict(self.fragmentation)
+        run.fragmentation.append(f)
 
     def test(self, config):
         raise NotImplementedError
 
     def teardown(self, config, results):
         pass
-
-class FioTest(PerfTest):
-    def record_results(self, run):
-        json_data = open("{}/{}.json".format(RESULTS_DIR, self.name))
-        data = json.load(json_data, cls=FioResultDecoder.FioResultDecoder)
-        for j in data['jobs']:
-            r = ResultData.FioResult()
-            r.load_from_dict(j)
-            run.fio_results.append(r)
-            for lt in self.lat_trace.results():
-                ltr = ResultData.LatencyTrace()
-                ltr.load_from_dict(lt)
-                run.latency_traces.append(ltr)
-        f = ResultData.Fragmentation()
-        f.load_from_dict(self.fragmentation)
-        run.fragmentation.append(f)
-
-    def default_cmd(self, results):
-        command = "fio --output-format=json"
-        command += " --output={}/{}.json".format(RESULTS_DIR, self.name)
-        command += " --alloc-size 98304 --allrandrepeat=1 --randseed=12345"
-        return command
-
-    def test(self, run, config, results):
-        directory = config.get('main', 'directory')
-        command = self.default_cmd(results)
-        command += " --directory {} ".format(directory)
-        command += self.command
-        utils.run_command(command)
-        self.collect_fragmentation(run, config)
 
     def collect_fragmentation(self, run, config):
         bg_dump_filename = f"{RESULTS_DIR}/bgs.txt"
@@ -90,8 +67,32 @@ class FioTest(PerfTest):
                 return
         self.fragmentation = json.load(open(frag_filename))
 
+class FioTest(PerfTest):
+    def record_results(self, run):
+        PerfTest.record_results(self, run)
+        json_data = open("{}/{}.json".format(RESULTS_DIR, self.name))
+        data = json.load(json_data, cls=FioResultDecoder.FioResultDecoder)
+        for j in data['jobs']:
+            r = ResultData.FioResult()
+            r.load_from_dict(j)
+            run.fio_results.append(r)
+
+    def default_cmd(self, results):
+        command = "fio --output-format=json"
+        command += " --output={}/{}.json".format(RESULTS_DIR, self.name)
+        command += " --alloc-size 98304 --allrandrepeat=1 --randseed=12345"
+        return command
+
+    def test(self, run, config, results):
+        directory = config.get('main', 'directory')
+        command = self.default_cmd(results)
+        command += " --directory {} ".format(directory)
+        command += self.command
+        utils.run_command(command)
+
 class TimeTest(PerfTest):
     def record_results(self, run):
+        PerfTest.record_results(self, run)
         r = ResultData.TimeResult()
         r.elapsed = self.elapsed
         run.time_results.append(r)
@@ -105,6 +106,7 @@ class TimeTest(PerfTest):
 
 class DbenchTest(PerfTest):
     def record_results(self, run):
+        PerfTest.record_results(self, run)
         r = ResultData.DbenchResult()
         r.load_from_dict(self.results)
         run.dbench_results.append(r)
