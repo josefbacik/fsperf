@@ -1,4 +1,5 @@
 import datetime
+import numbers
 import socket
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Table, Column, Integer, String, ForeignKey, DateTime,
@@ -27,6 +28,18 @@ class Run(Base):
     dbench_results = relationship("DbenchResult", backref="runs",
                                   order_by="DbenchResult.id",
                                   cascade="all,delete")
+    fragmentation = relationship("Fragmentation", backref="runs",
+                                 order_by="Fragmentation.id",
+                                 cascade="all,delete")
+    latency_traces = relationship("LatencyTrace", backref="runs",
+                                  order_by="LatencyTrace.id",
+                                  cascade="all,delete")
+
+def is_stat(key, value):
+    return not "id" in key and isinstance(value, numbers.Number)
+
+def result_to_dict(result):
+    return { k: v for (k, v) in vars(result).items() if is_stat(k, v) }
 
 class FioResult(Base):
     __tablename__ = 'fio_results'
@@ -38,18 +51,22 @@ class FioResult(Base):
     sys_cpu = Column(Float, default=0.0)
     read_lat_ns_min = Column(Integer, default=0)
     read_lat_ns_max = Column(Integer, default=0)
+    read_lat_ns_mean = Column(Integer, default=0)
     read_clat_ns_p50 = Column(Integer, default=0)
     read_clat_ns_p99 = Column(Integer, default=0)
+    read_clat_ns_mean = Column(Integer, default=0)
     read_iops = Column(Float, default=0)
     read_io_kbytes = Column(Integer, default=0)
     read_bw_bytes = Column(Integer, default=0)
     write_lat_ns_min = Column(Integer, default=0)
     write_lat_ns_max = Column(Integer, default=0)
+    write_lat_ns_mean = Column(Integer, default=0)
+    write_clat_ns_p50 = Column(Integer, default=0)
+    write_clat_ns_p99 = Column(Integer, default=0)
+    write_clat_ns_mean = Column(Integer, default=0)
     write_iops = Column(Float, default=0.0)
     write_io_kbytes = Column(Integer, default=0)
     write_bw_bytes = Column(Integer, default=0)
-    write_clat_ns_p50 = Column(Integer, default=0)
-    write_clat_ns_p99 = Column(Integer, default=0)
 
     def load_from_dict(self, inval):
         for k in dir(self):
@@ -57,11 +74,17 @@ class FioResult(Base):
                 continue
             setattr(self, k, inval[k])
 
+    def to_dict(self):
+        return result_to_dict(self)
+
 class TimeResult(Base):
     __tablename__ = 'time_results'
     id = Column(Integer, primary_key=True)
     run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
     elapsed = Column(Float, default=0.0)
+
+    def to_dict(self):
+        return result_to_dict(self)
 
 class DbenchResult(Base):
     __tablename__ = 'dbench_results'
@@ -90,3 +113,51 @@ class DbenchResult(Base):
             if k not in inval:
                 continue
             setattr(self, k, inval[k])
+
+    def to_dict(self):
+        return result_to_dict(self)
+
+class Fragmentation(Base):
+    __tablename__ = 'fragmentation'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    bg_count = Column(Integer, default=0)
+    fragmented_bg_count = Column(Integer, default=0)
+    frag_pct_mean = Column(Float, default=0.0)
+    frag_pct_min = Column(Float, default=0.0)
+    frag_pct_p50 = Column(Float, default=0.0)
+    frag_pct_p95 = Column(Float, default=0.0)
+    frag_pct_p99 = Column(Float, default=0.0)
+    frag_pct_max = Column(Float, default=0.0)
+
+    def load_from_dict(self, inval):
+        for k in dir(self):
+            if k not in inval:
+                continue
+            setattr(self, k, inval[k])
+
+    def to_dict(self):
+        return result_to_dict(self)
+
+class LatencyTrace(Base):
+    __tablename__ = 'latency_traces'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    function = Column(String)
+    ns_mean = Column(Float, default=0.0)
+    ns_min = Column(Float, default=0.0)
+    ns_p50 = Column(Float, default=0.0)
+    ns_p95 = Column(Float, default=0.0)
+    ns_p99 = Column(Float, default=0.0)
+    ns_max = Column(Float, default=0.0)
+    calls = Column(Integer, default=0)
+
+    def load_from_dict(self, inval):
+        for k in dir(self):
+            if k not in inval:
+                continue
+            setattr(self, k, inval[k])
+
+    def to_dict(self):
+        items = result_to_dict(self).items()
+        return { f"{self.function}_{k}": v for (k, v) in items }

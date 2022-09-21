@@ -1,0 +1,42 @@
+filesystem "/mnt/lol";
+k = key(0, BTRFS_BLOCK_GROUP_ITEM_KEY, 0, 0);
+k.max_type = BTRFS_BLOCK_GROUP_ITEM_KEY;
+bgs = search(BTRFS_EXTENT_TREE_OBJECTID, k);
+
+for bg in bgs {
+	bg_key = keyof(bg);
+	if bg_key.type != BTRFS_BLOCK_GROUP_ITEM_KEY {
+		continue;
+	}
+
+	bg_start = bg_key.objectid;
+	bg_len = bg_key.offset;
+	print("INS BLOCK-GROUP " + str(bg_start) + " " + str(bg_len));
+
+	k2 = key(bg_start, BTRFS_EXTENT_ITEM_KEY, 0, 0);
+	k2.max_objectid = bg_start + bg_len - 1;
+	k2.max_type = BTRFS_EXTENT_ITEM_KEY;
+	extents = search(BTRFS_EXTENT_TREE_OBJECTID, k2);
+
+	for extent in extents {
+		extent_key = keyof(extent);
+		extent_start = extent_key.objectid;
+		extent_len = extent_key.offset;
+		type = "";
+
+		if extent_key.type != BTRFS_EXTENT_ITEM_KEY && extent_key.type != BTRFS_METADATA_ITEM_KEY {
+			continue;
+		}
+
+		if extent_start >= bg_start + bg_len {
+			break;
+		}
+		if extent_key.type == BTRFS_EXTENT_ITEM_KEY {
+			type = "DATA-EXTENT";
+		} else {
+			type = "METADATA-EXTENT";
+			extent_len = 16384;
+		}
+		print("INS " + type + " " + str(extent_start) + " " + str(extent_len));
+	}
+}

@@ -5,52 +5,58 @@ import sys
 from subprocess import Popen
 import FioCompare
 import ResultData
-import PerfTest
-from utils import run_command,mount,setup_device,setup_cpu_governor,mkfs,NotRunException
+from utils import run_command,Mount,setup_device,setup_cpu_governor,mkfs,NotRunException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import importlib.util
-import inspect
 import datetime
 import utils
+import compare
 import platform
 
+TEST_ONLY = "TMP-TEST-ONLY"
+
+def clean_testonly(session, sections, tests):
+    today = datetime.date.today()
+    age = today - datetime.timedelta(days=365)
+    for section in sections:
+        for test in tests:
+            results = utils.get_results(session, test.name, section, TEST_ONLY, age)
+            for r in results:
+                session.delete(r)
+    session.commit()
+
 def want_run_test(run_tests, disabled_tests, t):
-    if len(run_tests) == 0 and len(disabled_tests) == 0:
-        return True
-    if t.name in disabled_tests:
+    names = [t.name, t.__class__.__name__]
+    if disabled_tests:
+        for name in names:
+            if name in disabled_tests:
+                print(f"{name} disabled!")
+                return False
+    if run_tests:
+        for name in names:
+            if name in run_tests:
+                print(f"{name} enabled!")
+                return True
+        print(f"{names} are not explicitly enabled ({run_tests})")
         return False
-    if t.__class__.__name__ in disabled_tests:
-        return False
-    if t.name in run_tests:
-        return True
-    if t.__class__.__name__ in run_tests:
-        return True
-    return False
+    return True
 
-def run_test(args, session, config, section, test):
+def run_test(args, session, config, section, purpose, test):
     for i in range(0, args.numruns):
-        if not t.skip_mkfs_and_mount:
-            mkfs(config, section)
-            mount(config, section)
-        try:
-            test.setup(config, section)
-            if (test.need_remount_after_setup and
-                config.has_option(section, 'mount')):
-                run_command("umount {}".format(config.get('main', 'directory')))
-                run_command(config.get(section, 'mount'))
-
-            run = ResultData.Run(kernel=platform.release(), config=section,
-                                 name=test.name, purpose=args.purpose)
-            test.test(run, config, "results")
-            session.add(run)
-            session.commit()
-        except NotRunException as e:
-            print("Not run: {}".format(e))
-        finally:
-            if not test.skip_mkfs_and_mount and config.has_option(section, 'mount'):
-                run_command("umount {}".format(config.get('main', 'directory')))
-            test.teardown(config, "results")
+        mkfs(test, config, section)
+        with Mount(test, config, section) as mnt:
+            try:
+                test.setup(config, section)
+                test.maybe_cycle_mount(mnt)
+                run = ResultData.Run(kernel=platform.release(), config=section,
+                                     name=test.name, purpose=purpose)
+                test.run(run, config, section, "results")
+                session.add(run)
+                session.commit()
+            except NotRunException as e:
+                print("Not run: {}".format(e))
+            finally:
+                test.teardown(config, "results")
     return 0
 
 parser = argparse.ArgumentParser()
@@ -60,6 +66,8 @@ parser.add_argument('-l', '--latency', action='store_true',
                     help="Compare latency values of the current run to old runs")
 parser.add_argument('-t', '--testonly', action='store_true',
                     help="Compare this run to previous runs, but do not store this run.")
+parser.add_argument('-F', '--fragmentation', action='store_true',
+                    help="include fragmentation tests in run")
 parser.add_argument('-n', '--numruns', type=int, default=1,
                     help="Run each test N number of times")
 parser.add_argument('-p', '--purpose', type=str, default="continuous",
@@ -118,25 +126,12 @@ session = Session()
 
 utils.mkdir_p("results/")
 
-tests = []
-oneoffs = []
-for (dirpath, dirnames, filenames) in os.walk("tests/"):
-    for f in filenames:
-        if not f.endswith(".py"):
-            continue
-        p = dirpath + '/' + f
-        spec = importlib.util.spec_from_file_location('module.name', p)
-        m = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(m)
-        attrs = set(dir(m)) - set(dir(PerfTest))
-        for cname in attrs:
-            c = getattr(m, cname)
-            if inspect.isclass(c) and issubclass(c, PerfTest.PerfTest):
-                t = c()
-                if t.oneoff:
-                    oneoffs.append(t)
-                else:
-                    tests.append(t)
+tests, oneoffs = utils.get_tests("tests/")
+
+if args.fragmentation:
+    frag_tests, frag_oneoffs = utils.get_tests("frag_tests/")
+    tests.extend(frag_tests)
+    oneoffs.extend(frag_oneoffs)
 
 if args.list:
     print("Normal tests")
@@ -147,20 +142,27 @@ if args.list:
         print("\t{}".format(t.__class__.__name__))
     sys.exit(1)
 
+if args.testonly:
+    run_purpose = TEST_ONLY
+    # We might have exited uncleanly and left behind testonly results
+    clean_testonly(session, sections, tests)
+else:
+    run_purpose = args.purpose
+
 # Run the normal tests
-for s in sections:
-    setup_device(config, s)
+for section in sections:
+    setup_device(config, section)
     for t in tests:
         if not want_run_test(args.tests, disabled_tests, t):
             continue
         print("Running {}".format(t.__class__.__name__))
-        run_test(args, session, config, s, t)
+        run_test(args, session, config, section, run_purpose, t)
 
 for t in oneoffs:
     if not want_run_test(args.tests, disabled_tests, t):
         continue
     print("Running {}".format(t.__class__.__name__))
-    run_test(args, session, config, "oneoff", t)
+    run_test(args, session, config, "oneoff", run_purpose, t)
 
 if args.testonly:
     today = datetime.date.today()
@@ -168,25 +170,13 @@ if args.testonly:
         age = today - datetime.timedelta(days=7)
     else:
         age = today - datetime.timedelta(days=365)
-    for s in sections:
-        print(f"{s} test results")
+    for section in sections:
+        print(f"{section} test results")
         for t in tests:
             if not want_run_test(args.tests, disabled_tests, t):
-                print(f'skippin test {t.name}')
+                print(f'skipping test {t.name}')
                 continue
-            results = utils.get_results(session, t.name, s, args.purpose, age)
-            newest = []
-            if compare_config:
-                newest = results
-                results = utils.get_results(session, t.name, compare_config, age)
-            else:
-                for i in range(0, args.numruns):
-                    newest.append(results.pop())
-            new_avg = utils.avg_results(newest)
-            avg_results = utils.avg_results(results)
-            print(f"{t.name} results")
-            utils.print_comparison_table(avg_results, new_avg)
-            print("")
-            for r in newest:
-                 session.delete(r)
-            session.commit()
+            compare_section = compare_config if compare_config else section
+            compare.compare_results(session, compare_section, section, t, args.purpose, TEST_ONLY, age)
+    # We use the db to uniformly access test results. Clean up testonly results
+    clean_testonly(session, sections, tests)
