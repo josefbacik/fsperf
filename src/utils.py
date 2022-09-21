@@ -180,18 +180,11 @@ class Mount:
             return False
 
 class LatencyTracing:
-    def __init__(self, config, section, test):
+    def __init__(self, fns):
         self.ps = {}
         self.latencies = {}
         self.calls = {}
-        self.fns = []
-        trace_fns = ""
-        if test.trace_fns:
-            trace_fns = test.trace_fns
-        elif config.has_option(section, 'trace_fns'):
-            trace_fns = config.get(section, 'trace_fns')
-        if len(trace_fns) > 0:
-            self.fns = trace_fns.split(",")
+        self.fns = fns
 
     def start_latency_trace(self, fn):
         # this sets the max size of a map in bpftrace

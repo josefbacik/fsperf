@@ -24,7 +24,7 @@ class PerfTest:
             mnt.cycle_mount()
 
     def run(self, run, config, section, results):
-        with utils.LatencyTracing(config, section, self) as lt:
+        with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
             self.test(run, config, results)
         self.latency_traces = lt.results()
         self.collect_fragmentation(run, config)
@@ -72,6 +72,14 @@ class PerfTest:
                 self.fragmentation = {}
                 return
         self.fragmentation = json.load(open(frag_filename))
+
+    def what_latency_traces(self, config, section):
+        trace_fns = ""
+        if self.trace_fns:
+            trace_fns = self.trace_fns
+        elif config.has_option(section, 'trace_fns'):
+            trace_fns = config.get(section, 'trace_fns')
+        return [fn for fn in trace_fns.split(",") if fn]
 
 class FioTest(PerfTest):
     def record_results(self, run):
