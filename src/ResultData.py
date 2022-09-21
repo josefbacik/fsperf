@@ -34,6 +34,10 @@ class Run(Base):
     latency_traces = relationship("LatencyTrace", backref="runs",
                                   order_by="LatencyTrace.id",
                                   cascade="all,delete")
+    btrfs_commit_stats = relationship("BtrfsCommitStats",
+                                      backref="runs",
+                                      order_by="BtrfsCommitStats.id",
+                                      cascade="all,delete")
 
 def is_stat(key, value):
     return not "id" in key and isinstance(value, numbers.Number)
@@ -161,3 +165,20 @@ class LatencyTrace(Base):
     def to_dict(self):
         items = result_to_dict(self).items()
         return { f"{self.function}_{k}": v for (k, v) in items }
+
+class BtrfsCommitStats(Base):
+    __tablename__ = 'btrfs_commit_stats'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    commits = Column(Integer, default=0)
+    avg_commit_ms = Column(Float, default=0.0)
+    max_commit_ms = Column(Integer, default=0)
+
+    def load_from_dict(self, inval):
+        for k in dir(self):
+            if k not in inval:
+                continue
+            setattr(self, k, inval[k])
+
+    def to_dict(self):
+        return result_to_dict(self)

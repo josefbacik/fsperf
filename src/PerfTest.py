@@ -28,6 +28,7 @@ class PerfTest:
             self.test(run, config, results)
         self.latency_traces = lt.results()
         self.collect_fragmentation(run, config)
+        self.commit_stats = utils.collect_commit_stats(config, section, run)
         self.record_results(run)
 
     def setup(self, config, section):
@@ -41,6 +42,11 @@ class PerfTest:
         f = ResultData.Fragmentation()
         f.load_from_dict(self.fragmentation)
         run.fragmentation.append(f)
+
+        if self.commit_stats and 'commits' in self.commit_stats:
+            stats = ResultData.BtrfsCommitStats()
+            stats.load_from_dict(self.commit_stats)
+            run.btrfs_commit_stats.append(stats)
 
     def test(self, config):
         raise NotImplementedError

@@ -86,6 +86,7 @@ def get_results(session, name, config, purpose, time):
                 outerjoin(ResultData.TimeResult).\
                 outerjoin(ResultData.Fragmentation).\
                 outerjoin(ResultData.LatencyTrace).\
+                outerjoin(ResultData.BtrfsCommitStats).\
                 filter(ResultData.Run.time >= time).\
                 filter(ResultData.Run.name == name).\
                 filter(ResultData.Run.purpose == purpose).\
@@ -262,7 +263,8 @@ def results_to_dict(run, include_time=False):
     ret_dict = {}
     sub_results = list(itertools.chain(run.time_results, run.fio_results,
                                        run.dbench_results, run.fragmentation,
-                                       run.latency_traces))
+                                       run.latency_traces,
+                                       run.btrfs_commit_stats))
     for r in sub_results:
         ret_dict.update(r.to_dict())
     if include_time:
@@ -422,6 +424,29 @@ def set_readpolicy(device, policy="pid"):
 def has_readpolicy(device):
     fsid = get_fsid(device)
     return os.path.exists("/sys/fs/btrfs/"+fsid+"/read_policy")
+
+def collect_commit_stats(config, section, run):
+    device = config.get(section, 'device')
+    fsid = get_fsid(device)
+    if not os.path.exists(f"/sys/fs/btrfs/{fsid}/commit_stats"):
+        return {}
+    commits = 0
+    total_commit_ms = 0
+    max_commit_ms = 0
+    avg_commit_ms = 0.0
+    with open(f"/sys/fs/btrfs/{fsid}/commit_stats") as f:
+        for line in f:
+            if "commits " in line:
+                commits = int(line.split(" ")[1])
+            elif "max_commit_ms " in line:
+                max_commit_ms = int(line.split(" ")[1])
+            elif "total_commit_ms " in line:
+                total_commit_ms = int(line.split(" ")[1])
+
+    if commits > 0:
+        avg_commit_ms = total_commit_ms / commits
+    return { 'commits': commits, 'avg_commit_ms': avg_commit_ms,
+             'max_commit_ms': max_commit_ms }
 
 def get_tests(test_dir):
     tests = []
