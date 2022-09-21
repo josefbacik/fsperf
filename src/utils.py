@@ -147,34 +147,30 @@ def want_mnt(test, config, section):
     return config.has_option(section, 'mount') and not test.skip_mkfs_and_mount
 
 class Mount:
-    def __init__(self, test, config, section):
+    def __init__(self, command, device, mount_point):
         self.live = False
-        self.want_mnt = False
-        if want_mnt(test, config, section):
-            self.want_mnt = True
-            self.mount_cmd = config.get(section, 'mount')
-            self.device = config.get(section, 'device')
-            self.mnt = config.get('main', 'directory')
+        self.device = device
+        self.mount_point = mount_point
+        self.mount_cmd = command
+        self.mount()
 
-    def do_mount(self):
-        if self.want_mnt:
-            run_command(f'{self.mount_cmd} {self.device} {self.mnt}')
-            self.live = True
+    def mount(self):
+        run_command(f'{self.mount_cmd} {self.device} {self.mount_point}')
+        self.live = True
 
-    def do_umount(self):
+    def umount(self):
         if self.live:
-            run_command(f"umount {self.mnt}")
+            run_command(f"umount {self.mount_point}")
 
     def cycle_mount(self):
-        self.do_umount()
-        self.do_mount()
+        self.umount()
+        self.mount()
 
     def __enter__(self):
-        self.do_mount()
         return self
 
     def __exit__(self, et, ev, etb):
-        self.do_umount()
+        self.umount()
         # re-raise
         if et is not None:
             return False

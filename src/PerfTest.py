@@ -4,6 +4,7 @@ import utils
 import json
 from timeit import default_timer as timer
 from subprocess import Popen, PIPE, DEVNULL
+import contextlib
 
 RESULTS_DIR = "results"
 FRAG_DIR = "src/frag"
@@ -24,13 +25,31 @@ class PerfTest:
             mnt.cycle_mount()
 
     def run(self, run, config, section, results):
-        with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
-            self.test(run, config, results)
-        self.latency_traces = lt.results()
-        self.collect_fragmentation(run, config)
-        self.commit_stats = utils.collect_commit_stats(config, section, run)
-        self.record_results(run)
+        with self.test_context(config, section):
+            self.maybe_cycle_mount(self.mnt)
+            with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
+                self.test(run, config, results)
+            self.latency_traces = lt.results()
+            self.collect_fragmentation(run, config)
+            self.commit_stats = utils.collect_commit_stats(config, section, run)
+            self.record_results(run)
 
+    # do generic setup (mkfs/mount), then test-specific setup.
+    # use ExitStack to ensure we call umount/teardown appropriately
+    def test_context(self, config, section):
+        utils.mkfs(self, config, section)
+        stack = contextlib.ExitStack()
+        if utils.want_mnt(self, config, section):
+            self.mnt = utils.Mount(
+                    config.get(section, 'mount'),
+                    config.get(section, 'device'),
+                    config.get('main', 'directory'))
+            stack.enter_context(self.mnt)
+        self.setup(config, section)
+        stack.callback(self.teardown, config, RESULTS_DIR)
+        return stack
+
+    # override for special per-test setup
     def setup(self, config, section):
         pass
 
@@ -42,15 +61,16 @@ class PerfTest:
         f = ResultData.Fragmentation()
         f.load_from_dict(self.fragmentation)
         run.fragmentation.append(f)
-
         if self.commit_stats and 'commits' in self.commit_stats:
             stats = ResultData.BtrfsCommitStats()
             stats.load_from_dict(self.commit_stats)
             run.btrfs_commit_stats.append(stats)
 
+    # must override, this is the actual test logic!
     def test(self, config):
         raise NotImplementedError
 
+    # override for special per-test teardown (to undo setup)
     def teardown(self, config, results):
         pass
 

@@ -43,20 +43,14 @@ def want_run_test(run_tests, disabled_tests, t):
 
 def run_test(args, session, config, section, purpose, test):
     for i in range(0, args.numruns):
-        mkfs(test, config, section)
-        with Mount(test, config, section) as mnt:
-            try:
-                test.setup(config, section)
-                test.maybe_cycle_mount(mnt)
-                run = ResultData.Run(kernel=platform.release(), config=section,
-                                     name=test.name, purpose=purpose)
-                test.run(run, config, section, "results")
-                session.add(run)
-                session.commit()
-            except NotRunException as e:
-                print("Not run: {}".format(e))
-            finally:
-                test.teardown(config, "results")
+        try:
+            run = ResultData.Run(kernel=platform.release(), config=section,
+                                 name=test.name, purpose=purpose)
+            test.run(run, config, section, "results")
+            session.add(run)
+            session.commit()
+        except NotRunException as e:
+            print("Not run: {}".format(e))
     return 0
 
 parser = argparse.ArgumentParser()
