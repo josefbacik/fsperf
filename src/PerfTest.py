@@ -107,7 +107,7 @@ class DbenchTest(PerfTest):
     def record_results(self, run):
         r = ResultData.DbenchResult()
         r.load_from_dict(self.results)
-        run.dbench_results.append(self.results)
+        run.dbench_results.append(r)
 
     def test(self, run, config, results):
         directory = config.get('main', 'directory')
