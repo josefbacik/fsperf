@@ -25,6 +25,9 @@ for p in args.labels:
             outerjoin(FioResult).\
             outerjoin(DbenchResult).\
             outerjoin(TimeResult).\
+            outerjoin(ResultData.Fragmentation).\
+            outerjoin(ResultData.LatencyTrace).\
+            outerjoin(ResultData.BtrfsCommitStats).\
             filter(Run.purpose == p).all()
     for r in results:
         session.delete(r)
@@ -35,6 +38,9 @@ if args.config is not None:
             outerjoin(FioResult).\
             outerjoin(DbenchResult).\
             outerjoin(TimeResult).\
+            outerjoin(ResultData.Fragmentation).\
+            outerjoin(ResultData.LatencyTrace).\
+            outerjoin(ResultData.BtrfsCommitStats).\
             filter(Run.config == args.config).all()
     for r in results:
         session.delete(r)

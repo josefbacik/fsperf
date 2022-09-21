@@ -18,6 +18,9 @@ def get_avgs(session, config, test, days):
         outerjoin(FioResult).\
         outerjoin(DbenchResult).\
         outerjoin(TimeResult).\
+        outerjoin(ResultData.Fragmentation).\
+        outerjoin(ResultData.LatencyTrace).\
+        outerjoin(ResultData.BtrfsCommitStats).\
         filter(Run.time >= thresh).\
         filter(Run.config == config).\
         filter(Run.name == test).\
@@ -32,6 +35,9 @@ def get_last(session, config, test):
         outerjoin(FioResult).\
         outerjoin(DbenchResult).\
         outerjoin(TimeResult).\
+        outerjoin(ResultData.Fragmentation).\
+        outerjoin(ResultData.LatencyTrace).\
+        outerjoin(ResultData.BtrfsCommitStats).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
@@ -49,6 +55,9 @@ def get_all_results(session, config, test):
         outerjoin(FioResult).\
         outerjoin(DbenchResult).\
         outerjoin(TimeResult).\
+        outerjoin(ResultData.Fragmentation).\
+        outerjoin(ResultData.LatencyTrace).\
+        outerjoin(ResultData.BtrfsCommitStats).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
