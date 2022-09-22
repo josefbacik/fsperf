@@ -28,6 +28,7 @@ for p in args.labels:
             outerjoin(ResultData.Fragmentation).\
             outerjoin(ResultData.LatencyTrace).\
             outerjoin(ResultData.BtrfsCommitStats).\
+            outerjoin(ResultData.MountTiming).\
             filter(Run.purpose == p).all()
     for r in results:
         session.delete(r)
@@ -41,6 +42,7 @@ if args.config is not None:
             outerjoin(ResultData.Fragmentation).\
             outerjoin(ResultData.LatencyTrace).\
             outerjoin(ResultData.BtrfsCommitStats).\
+            outerjoin(ResultData.MountTiming).\
             filter(Run.config == args.config).all()
     for r in results:
         session.delete(r)
