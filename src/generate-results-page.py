@@ -18,9 +18,9 @@ def get_avgs(session, config, test, days):
         outerjoin(FioResult).\
         outerjoin(DbenchResult).\
         outerjoin(TimeResult).\
-        outerjoin(ResultData.Fragmentation).\
-        outerjoin(ResultData.LatencyTrace).\
-        outerjoin(ResultData.BtrfsCommitStats).\
+        outerjoin(Fragmentation).\
+        outerjoin(LatencyTrace).\
+        outerjoin(BtrfsCommitStats).\
         filter(Run.time >= thresh).\
         filter(Run.config == config).\
         filter(Run.name == test).\
@@ -35,9 +35,9 @@ def get_last(session, config, test):
         outerjoin(FioResult).\
         outerjoin(DbenchResult).\
         outerjoin(TimeResult).\
-        outerjoin(ResultData.Fragmentation).\
-        outerjoin(ResultData.LatencyTrace).\
-        outerjoin(ResultData.BtrfsCommitStats).\
+        outerjoin(Fragmentation).\
+        outerjoin(LatencyTrace).\
+        outerjoin(BtrfsCommitStats).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
@@ -55,9 +55,9 @@ def get_all_results(session, config, test):
         outerjoin(FioResult).\
         outerjoin(DbenchResult).\
         outerjoin(TimeResult).\
-        outerjoin(ResultData.Fragmentation).\
-        outerjoin(ResultData.LatencyTrace).\
-        outerjoin(ResultData.BtrfsCommitStats).\
+        outerjoin(Fragmentation).\
+        outerjoin(LatencyTrace).\
+        outerjoin(BtrfsCommitStats).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
@@ -73,6 +73,9 @@ def get_values_for_key(results_array, key):
     found_nonzero = False
     for run in results_array:
         dates.append(run['time'])
+        if key not in run:
+            values.append(0)
+            continue
         values.append(run[key])
         if run[key] > 0 or run[key] < 0:
             found_nonzero = True
