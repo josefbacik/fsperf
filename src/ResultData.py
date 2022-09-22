@@ -38,6 +38,9 @@ class Run(Base):
                                       backref="runs",
                                       order_by="BtrfsCommitStats.id",
                                       cascade="all,delete")
+    mount_timings = relationship("MountTiming", backref="runs",
+                                  order_by="MountTiming.id",
+                                  cascade="all,delete")
 
 def is_stat(key, value):
     return not "id" in key and isinstance(value, numbers.Number)
@@ -179,6 +182,20 @@ class BtrfsCommitStats(Base):
             if k not in inval:
                 continue
             setattr(self, k, inval[k])
+
+    def to_dict(self):
+        return result_to_dict(self)
+
+class MountTiming(Base):
+    __tablename__ = 'mount_timings'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    end_state_umount_ns = Column(Integer, default=0)
+    end_state_mount_ns = Column(Integer, default=0)
+
+    def __init__(self, umount, mount):
+        self.end_state_umount_ns = umount
+        self.end_state_mount_ns = mount
 
     def to_dict(self):
         return result_to_dict(self)

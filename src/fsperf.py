@@ -43,20 +43,14 @@ def want_run_test(run_tests, disabled_tests, t):
 
 def run_test(args, session, config, section, purpose, test):
     for i in range(0, args.numruns):
-        mkfs(test, config, section)
-        with Mount(test, config, section) as mnt:
-            try:
-                test.setup(config, section)
-                test.maybe_cycle_mount(mnt)
-                run = ResultData.Run(kernel=platform.release(), config=section,
-                                     name=test.name, purpose=purpose)
-                test.run(run, config, section, "results")
-                session.add(run)
-                session.commit()
-            except NotRunException as e:
-                print("Not run: {}".format(e))
-            finally:
-                test.teardown(config, "results")
+        try:
+            run = ResultData.Run(kernel=platform.release(), config=section,
+                                 name=test.name, purpose=purpose)
+            test.run(run, config, section, "results")
+            session.add(run)
+            session.commit()
+        except NotRunException as e:
+            print("Not run: {}".format(e))
     return 0
 
 parser = argparse.ArgumentParser()
@@ -174,9 +168,15 @@ if args.testonly:
         print(f"{section} test results")
         for t in tests:
             if not want_run_test(args.tests, disabled_tests, t):
-                print(f'skipping test {t.name}')
                 continue
             compare_section = compare_config if compare_config else section
             compare.compare_results(session, compare_section, section, t, args.purpose, TEST_ONLY, age)
+    if oneoffs:
+        print(f"oneoff test results")
+    for t in oneoffs:
+        if not want_run_test(args.tests, disabled_tests, t):
+            continue
+        compare_section = compare_config if compare_config else section
+        compare.compare_results(session, "oneoff", "oneoff", t, args.purpose, TEST_ONLY, age)
     # We use the db to uniformly access test results. Clean up testonly results
     clean_testonly(session, sections, tests)

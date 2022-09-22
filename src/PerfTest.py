@@ -3,7 +3,7 @@ import ResultData
 import utils
 import json
 from timeit import default_timer as timer
-from subprocess import Popen, PIPE, DEVNULL
+import contextlib
 
 RESULTS_DIR = "results"
 FRAG_DIR = "src/frag"
@@ -14,6 +14,8 @@ class PerfTest:
     trace_fns = ""
     need_remount_after_setup = False
     skip_mkfs_and_mount = False
+    end_state_umount_s = 0
+    end_state_mount_s = 0
 
     # Set this if the test does something specific and isn't going to use the
     # configuration options to change how the test is run.
@@ -24,13 +26,32 @@ class PerfTest:
             mnt.cycle_mount()
 
     def run(self, run, config, section, results):
-        with utils.LatencyTracing(config, section, self) as lt:
-            self.test(run, config, results)
-        self.latency_traces = lt.results()
-        self.collect_fragmentation(run, config)
-        self.commit_stats = utils.collect_commit_stats(config, section, run)
-        self.record_results(run)
+        with self.test_context(config, section):
+            self.maybe_cycle_mount(self.mnt)
+            with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
+                self.test(run, config, results)
+            self.latency_traces = lt.results()
+            self.collect_fragmentation(run, config)
+            self.commit_stats = utils.collect_commit_stats(self.dev)
+            self.end_state_umount_s, self.end_state_mount_s = self.mnt.timed_cycle_mount()
+            self.record_results(run)
 
+    # do generic setup (mkfs/mount), then test-specific setup.
+    # use ExitStack to ensure we call umount/teardown appropriately
+    def test_context(self, config, section):
+        self.dev = utils.mkfs(self, config, section)
+        stack = contextlib.ExitStack()
+        if utils.want_mnt(self, config, section):
+            self.mnt = utils.Mount(
+                    config.get(section, 'mount'),
+                    config.get(section, 'device'),
+                    config.get('main', 'directory'))
+            stack.enter_context(self.mnt)
+        self.setup(config, section)
+        stack.callback(self.teardown, config, RESULTS_DIR)
+        return stack
+
+    # override for special per-test setup
     def setup(self, config, section):
         pass
 
@@ -39,18 +60,21 @@ class PerfTest:
             ltr = ResultData.LatencyTrace()
             ltr.load_from_dict(lt)
             run.latency_traces.append(ltr)
+        mt = ResultData.MountTiming(self.end_state_umount_s, self.end_state_mount_s)
+        run.mount_timings.append(mt)
         f = ResultData.Fragmentation()
         f.load_from_dict(self.fragmentation)
         run.fragmentation.append(f)
-
         if self.commit_stats and 'commits' in self.commit_stats:
             stats = ResultData.BtrfsCommitStats()
             stats.load_from_dict(self.commit_stats)
             run.btrfs_commit_stats.append(stats)
 
+    # must override, this is the actual test logic!
     def test(self, config):
         raise NotImplementedError
 
+    # override for special per-test teardown (to undo setup)
     def teardown(self, config, results):
         pass
 
@@ -72,6 +96,14 @@ class PerfTest:
                 self.fragmentation = {}
                 return
         self.fragmentation = json.load(open(frag_filename))
+
+    def what_latency_traces(self, config, section):
+        trace_fns = ""
+        if self.trace_fns:
+            trace_fns = self.trace_fns
+        elif config.has_option(section, 'trace_fns'):
+            trace_fns = config.get(section, 'trace_fns')
+        return [fn for fn in trace_fns.split(",") if fn]
 
 class FioTest(PerfTest):
     def record_results(self, run):
