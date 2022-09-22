@@ -168,9 +168,15 @@ if args.testonly:
         print(f"{section} test results")
         for t in tests:
             if not want_run_test(args.tests, disabled_tests, t):
-                print(f'skipping test {t.name}')
                 continue
             compare_section = compare_config if compare_config else section
             compare.compare_results(session, compare_section, section, t, args.purpose, TEST_ONLY, age)
+    if oneoffs:
+        print(f"oneoff test results")
+    for t in oneoffs:
+        if not want_run_test(args.tests, disabled_tests, t):
+            continue
+        compare_section = compare_config if compare_config else section
+        compare.compare_results(session, "oneoff", "oneoff", t, args.purpose, TEST_ONLY, age)
     # We use the db to uniformly access test results. Clean up testonly results
     clean_testonly(session, sections, tests)

@@ -15,7 +15,6 @@ class BtrfsBgScalability(FioTest):
         directory = config.get('main', 'directory')
         self.mnt.umount()
         self.nullb_mnt.umount()
-        utils.run_command(f'umount {directory}')
         self.nullblk = None
 
     def setup(self, config, section):
@@ -28,8 +27,8 @@ class BtrfsBgScalability(FioTest):
         self.nullblk.config_values = config_values
         try:
             self.nullblk.start()
-        except:
-            raise utils.NotRunException("We don't have nullblk support loaded")
+        except Exception as e:
+            raise utils.NotRunException(f"We don't have nullblk support loaded {e}")
 
         mkfsopts = "-f -R free-space-tree -O no-holes"
         mntcmd = "mount -o ssd,nodatacow"
@@ -62,5 +61,3 @@ class BtrfsBgScalability(FioTest):
         command += f' --directory {directory} '
         command += self.command
         utils.run_command(command)
-
-        self.record_results(run, results)
