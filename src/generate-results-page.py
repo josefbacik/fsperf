@@ -21,6 +21,7 @@ def get_avgs(session, config, test, days):
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
         outerjoin(BtrfsCommitStats).\
+        outerjoin(ResultData.MountTiming).\
         filter(Run.time >= thresh).\
         filter(Run.config == config).\
         filter(Run.name == test).\
@@ -38,6 +39,7 @@ def get_last(session, config, test):
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
         outerjoin(BtrfsCommitStats).\
+        outerjoin(ResultData.MountTiming).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
@@ -58,6 +60,7 @@ def get_all_results(session, config, test):
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
         outerjoin(BtrfsCommitStats).\
+        outerjoin(ResultData.MountTiming).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
