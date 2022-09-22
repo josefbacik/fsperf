@@ -17,6 +17,7 @@ import inspect
 import numpy
 import signal
 import time
+import jinja2
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -468,3 +469,12 @@ def get_tests(test_dir):
                     else:
                         tests.append(t)
     return tests, oneoffs
+
+def generate_bg_dump(config, frag_dir):
+    if os.path.exists(f"{frag_dir}/bg-dump.btrd"):
+        return
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(frag_dir))
+    template = env.get_template('bg-dump.jinja')
+    f = open(f'{frag_dir}/bg-dump.btrd', 'w')
+    f.write(template.render(testdir=config.get('main', 'directory')))
+    f.close()

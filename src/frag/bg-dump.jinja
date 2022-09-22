@@ -1,4 +1,4 @@
-filesystem "/mnt/test";
+filesystem "{{ testdir }}";
 k = key(0, BTRFS_BLOCK_GROUP_ITEM_KEY, 0, 0);
 k.max_type = BTRFS_BLOCK_GROUP_ITEM_KEY;
 bgs = search(BTRFS_EXTENT_TREE_OBJECTID, k);

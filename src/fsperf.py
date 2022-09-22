@@ -122,6 +122,13 @@ utils.mkdir_p("results/")
 
 tests, oneoffs = utils.get_tests("tests/")
 
+# In case we changed our test directory, delete bg-dump.btrd so it can be
+# re-generated with the appropriate directory
+try:
+    os.unlink('src/frag/bg-dump.btrd')
+except FileNotFoundError:
+    pass
+
 if args.fragmentation:
     frag_tests, frag_oneoffs = utils.get_tests("frag_tests/")
     tests.extend(frag_tests)

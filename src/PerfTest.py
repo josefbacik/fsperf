@@ -80,6 +80,7 @@ class PerfTest:
 
     def collect_fragmentation(self, run, config):
         bg_dump_filename = f"{RESULTS_DIR}/bgs.txt"
+        utils.generate_bg_dump(config, FRAG_DIR)
         with open(bg_dump_filename, 'w') as f:
             try:
                 utils.run_command(f"btrd {FRAG_DIR}/bg-dump.btrd", f)
