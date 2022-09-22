@@ -1,7 +1,3 @@
-[global]
-directory=/mnt/lol
-group_reporting=1
-
 [large-short]
 ioengine=falloc
 rw=write
