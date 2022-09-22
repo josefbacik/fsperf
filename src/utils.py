@@ -141,10 +141,11 @@ def want_mkfs(test, config, section):
 
 def mkfs(test, config, section):
     if not want_mkfs(test, config, section):
-        return
+        return None
     device = config.get(section, 'device')
     mkfs_cmd = config.get(section, 'mkfs')
     run_command(f'{mkfs_cmd} {device}')
+    return device
 
 def want_mnt(test, config, section):
     return config.has_option(section, 'mount') and not test.skip_mkfs_and_mount
@@ -386,11 +387,8 @@ def get_fstype(device):
     return (str(fstype).removesuffix("\\n'")).removeprefix("b'")
 
 def get_fsid(device):
-    fsid = subprocess.check_output("blkid -s UUID -o value "+device, shell=True)
-    # Raw output is something like this
-    #    b'abcf123f-7e95-40cd-8322-0d32773cb4ec\n'
-    # strip off extra characters.
-    return str(fsid)[2:38]
+    cmd = shlex.split(f"blkid -s UUID -o value {device}")
+    return subprocess.check_output(cmd, shell=True, text=True).strip()
 
 def get_readpolicies(device):
     fsid = get_fsid(device)
@@ -427,8 +425,7 @@ def has_readpolicy(device):
     fsid = get_fsid(device)
     return os.path.exists("/sys/fs/btrfs/"+fsid+"/read_policy")
 
-def collect_commit_stats(config, section, run):
-    device = config.get(section, 'device')
+def collect_commit_stats(device):
     fsid = get_fsid(device)
     if not os.path.exists(f"/sys/fs/btrfs/{fsid}/commit_stats"):
         return {}

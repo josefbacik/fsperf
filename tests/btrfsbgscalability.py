@@ -45,6 +45,7 @@ class BtrfsBgScalability(FioTest):
         utils.mkdir_p(f'{directory}/loop')
         utils.run_command(f'truncate -s 4T {loopfile}')
         utils.run_command(f'mkfs.btrfs {mkfsopts} {loopfile}')
+        self.dev = loopfile
         self.mnt = utils.Mount(mntcmd, loopfile, loopdir)
 
         # Trigger the allocation of about 3500 data block groups, without

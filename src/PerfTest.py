@@ -32,14 +32,14 @@ class PerfTest:
                 self.test(run, config, results)
             self.latency_traces = lt.results()
             self.collect_fragmentation(run, config)
-            self.commit_stats = utils.collect_commit_stats(config, section, run)
+            self.commit_stats = utils.collect_commit_stats(self.dev)
             self.end_state_umount_s, self.end_state_mount_s = self.mnt.timed_cycle_mount()
             self.record_results(run)
 
     # do generic setup (mkfs/mount), then test-specific setup.
     # use ExitStack to ensure we call umount/teardown appropriately
     def test_context(self, config, section):
-        utils.mkfs(self, config, section)
+        self.dev = utils.mkfs(self, config, section)
         stack = contextlib.ExitStack()
         if utils.want_mnt(self, config, section):
             self.mnt = utils.Mount(
