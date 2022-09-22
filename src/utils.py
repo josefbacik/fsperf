@@ -15,6 +15,8 @@ import collections
 import importlib.util
 import inspect
 import numpy
+import signal
+import time
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -87,6 +89,7 @@ def get_results(session, name, config, purpose, time):
                 outerjoin(ResultData.Fragmentation).\
                 outerjoin(ResultData.LatencyTrace).\
                 outerjoin(ResultData.BtrfsCommitStats).\
+                outerjoin(ResultData.MountTiming).\
                 filter(ResultData.Run.time >= time).\
                 filter(ResultData.Run.name == name).\
                 filter(ResultData.Run.purpose == purpose).\
@@ -104,13 +107,13 @@ def mkdir_p(path):
             raise
 
 def run_command(cmd, outputfile=None):
-    print("  running cmd '{}' from dir {}".format(cmd, os.getcwd()))
+    print(f"  running cmd '{cmd}'")
     if not outputfile:
         outputfile = PIPE
     p = Popen(shlex.split(cmd), stdout=outputfile, stderr=outputfile)
     out, err = p.communicate()
     if p.returncode:
-        print(f"out: {out}, err: {err}")
+        print(f"{cmd} failed. out: {out}, err: {err}")
         raise CalledProcessError(p.returncode, cmd)
 
 def setup_cpu_governor(config):
@@ -161,10 +164,19 @@ class Mount:
     def umount(self):
         if self.live:
             run_command(f"umount {self.mount_point}")
+            self.live = False
 
     def cycle_mount(self):
         self.umount()
         self.mount()
+
+    def timed_cycle_mount(self):
+        t1 = time.perf_counter_ns()
+        self.umount()
+        t2 = time.perf_counter_ns()
+        self.mount()
+        t3 = time.perf_counter_ns()
+        return (t2 - t1, t3 - t2)
 
     def __enter__(self):
         return self
@@ -193,16 +205,16 @@ class LatencyTracing:
 
     def collect_latency_trace(self, fn):
         bt_p = self.ps[fn]
-        bt_p.terminate()
+        bt_p.send_signal(signal.SIGINT)
         # ignore errors in latency tracing; better to let the whole run still complete.
         try:
             stdout, stderr = bt_p.communicate(timeout=15)
         except subprocess.TimeoutExpired:
-            print("Couldn't terminate {fn} bpftrace. Kill it and move on.")
+            print("Couldn't interrupt {fn} bpftrace. Kill it and move on.")
             bt_p.kill()
             return
         if bt_p.returncode:
-            print(f"{fn} bpftrace had an error. stderr: {stderr.strip()}")
+            print(f"{fn} bpftrace had an error {bt_p.returncode}. stderr: {stderr.strip()}")
             return
         self.latencies[fn] = []
         out = stdout.split('\n')
@@ -253,7 +265,8 @@ def results_to_dict(run, include_time=False):
     sub_results = list(itertools.chain(run.time_results, run.fio_results,
                                        run.dbench_results, run.fragmentation,
                                        run.latency_traces,
-                                       run.btrfs_commit_stats))
+                                       run.btrfs_commit_stats,
+                                       run.mount_timings))
     for r in sub_results:
         ret_dict.update(r.to_dict())
     if include_time:
