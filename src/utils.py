@@ -167,6 +167,11 @@ class Mount:
         if self.live:
             run_command(f"umount {self.mount_point}")
             self.live = False
+            # umount sometimes results in asynchronous downstream cleanup,
+            # e.g. for implicit loop devices. wait a second after umount to
+            # give that a chance to happen.
+            if self.is_on_loop_dev():
+                time.sleep(1)
 
     def cycle_mount(self):
         self.umount()
@@ -188,6 +193,11 @@ class Mount:
         # re-raise
         if et is not None:
             return False
+
+    def is_on_loop_dev(self):
+        st_rdev = os.stat(self.device).st_rdev
+        maj = st_rdev >> 8
+        return maj == 7 or maj == 0
 
 class LatencyTracing:
     def __init__(self, fns):
