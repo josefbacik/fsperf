@@ -30,14 +30,11 @@ def want_run_test(run_tests, disabled_tests, t):
     if disabled_tests:
         for name in names:
             if name in disabled_tests:
-                print(f"{name} disabled!")
                 return False
     if run_tests:
         for name in names:
             if name in run_tests:
-                print(f"{name} enabled!")
                 return True
-        print(f"{names} are not explicitly enabled ({run_tests})")
         return False
     return True
 
