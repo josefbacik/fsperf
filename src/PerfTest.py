@@ -119,7 +119,7 @@ class FioTest(PerfTest):
     def default_cmd(self, results):
         command = "fio --output-format=json"
         command += " --output={}/{}.json".format(RESULTS_DIR, self.name)
-        command += " --alloc-size 98304 --allrandrepeat=1 --randseed=12345"
+        command += " --alloc-size 98304 --allrandrepeat=1 --randseed=12345 --group_reporting=1"
         return command
 
     def test(self, run, config, results):

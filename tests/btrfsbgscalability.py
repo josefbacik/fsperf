@@ -5,7 +5,7 @@ import utils
 class BtrfsBgScalability(FioTest):
     name = "btrfsbgscalability"
     command = ("--name btrfsbgscalability --rw=randwrite --fsync=0 "
-               "--fallocate=posix --group_reporting --direct=1 "
+               "--fallocate=posix --direct=1 "
                "--ioengine=io_uring --iodepth=64 --bs=64k --filesize=1g "
                "--runtime=300 --time_based --numjobs=8 --thread")
     oneoff = True
