@@ -12,6 +12,8 @@ def compare_results(session, section_A, section_B, test, purpose_A, purpose_B, a
     results_B = utils.get_results(session, test.name, section_B, purpose_B, age)
     avg_A = utils.avg_results(results_A)
     avg_B = utils.avg_results(results_B)
+    if not (avg_A and avg_B):
+        return
     print(f"{test.name} results")
     utils.print_comparison_table(avg_A, avg_B)
     print("")

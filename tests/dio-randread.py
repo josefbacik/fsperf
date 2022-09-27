@@ -7,7 +7,7 @@ class DioRandread(FioTest):
     name = "diorandread"
     command = ("--name diorandread --direct=1 --size=1g --rw=randread "
                "--runtime=60 --iodepth=1024 --nrfiles=16 "
-               "--numjobs=16 --group_reporting")
+               "--numjobs=16")
 
     def setup(self, config, section):
         device = config.get(section, 'device')
