@@ -21,15 +21,25 @@ def get_avgs(session, config, test, days):
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
         outerjoin(BtrfsCommitStats).\
-        outerjoin(ResultData.MountTiming).\
+        outerjoin(MountTiming).\
         filter(Run.time >= thresh).\
         filter(Run.config == config).\
         filter(Run.name == test).\
         filter(Run.purpose == "continuous").\
         order_by(Run.time).all()
+    newest = None
     if len(results) > 1:
         newest = results.pop()
-    return utils.avg_results(results)
+    avgs = utils.avg_results(results)
+    if newest is None:
+        return avgs
+
+    newest_dict = utils.results_to_dict(newest)
+    for k,vs in newest_dict.items():
+        if k in avgs:
+            continue
+        avgs[k] = {'mean': 0.0, 'stdev': 0}
+    return avgs
 
 def get_last(session, config, test):
     result = session.query(Run).\
@@ -39,7 +49,7 @@ def get_last(session, config, test):
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
         outerjoin(BtrfsCommitStats).\
-        outerjoin(ResultData.MountTiming).\
+        outerjoin(MountTiming).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
@@ -60,7 +70,7 @@ def get_all_results(session, config, test):
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
         outerjoin(BtrfsCommitStats).\
-        outerjoin(ResultData.MountTiming).\
+        outerjoin(MountTiming).\
         filter(Run.name == test).\
         filter(Run.config == config).\
         filter(Run.purpose == "continuous").\
