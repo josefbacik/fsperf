@@ -352,6 +352,8 @@ def check_regression(baseline, recent):
         better = metric_direction(k)
         if k in test_regression_keys:
             nr_regress_keys += 1
+        if k not in recent:
+            return False
         if better == HIGHER_IS_BETTER:
             threshold = v['mean'] - (v['stdev'] * 1.96)
             if recent[k]['value'] < threshold:
