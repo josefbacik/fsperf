@@ -18,6 +18,7 @@ import numpy
 import signal
 import time
 import jinja2
+import stat
 
 LOWER_IS_BETTER = 0
 HIGHER_IS_BETTER = 1
@@ -168,9 +169,9 @@ class Mount:
             run_command(f"umount {self.mount_point}")
             self.live = False
             # umount sometimes results in asynchronous downstream cleanup,
-            # e.g. for implicit loop devices. wait a second after umount to
-            # give that a chance to happen.
-            if self.is_on_loop_dev():
+            # e.g. for implicit loop devices. If our device isn't a block
+            # device, we have to sleep to give that a chance to happen.
+            if self.is_on_block_device():
                 time.sleep(1)
 
     def cycle_mount(self):
@@ -194,10 +195,9 @@ class Mount:
         if et is not None:
             return False
 
-    def is_on_loop_dev(self):
-        st_rdev = os.stat(self.device).st_rdev
-        maj = st_rdev >> 8
-        return maj == 7 or maj == 0
+    def is_on_block_device(self):
+        st_mode = os.stat(self.device).st_mode
+        return stat.S_ISBLK(st_mode)
 
 class LatencyTracing:
     def __init__(self, fns):
