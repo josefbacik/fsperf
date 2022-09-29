@@ -9,9 +9,11 @@ parser.add_argument("--labels", nargs='*', type=str, default=[],
                     help="Labels to delete the results for")
 parser.add_argument("--config", type=str,
                     help="Configs to delete the results for")
+parser.add_argument("--test", type=str,
+                    help="Test name to delete results for")
 args = parser.parse_args()
 
-if not args.labels and not args.config:
+if not args.labels and not args.config and not args.test:
     print("Must specify either labels or configs to delete from")
     sys.exit(1)
 
@@ -25,11 +27,25 @@ for p in args.labels:
             outerjoin(FioResult).\
             outerjoin(DbenchResult).\
             outerjoin(TimeResult).\
-            outerjoin(ResultData.Fragmentation).\
-            outerjoin(ResultData.LatencyTrace).\
-            outerjoin(ResultData.BtrfsCommitStats).\
-            outerjoin(ResultData.MountTiming).\
+            outerjoin(Fragmentation).\
+            outerjoin(LatencyTrace).\
+            outerjoin(BtrfsCommitStats).\
+            outerjoin(MountTiming).\
             filter(Run.purpose == p).all()
+    for r in results:
+        session.delete(r)
+    session.commit()
+
+if args.test is not None:
+    results = session.query(Run).\
+            outerjoin(FioResult).\
+            outerjoin(DbenchResult).\
+            outerjoin(TimeResult).\
+            outerjoin(Fragmentation).\
+            outerjoin(LatencyTrace).\
+            outerjoin(BtrfsCommitStats).\
+            outerjoin(MountTiming).\
+            filter(Run.name == args.test).all()
     for r in results:
         session.delete(r)
     session.commit()
@@ -39,10 +55,10 @@ if args.config is not None:
             outerjoin(FioResult).\
             outerjoin(DbenchResult).\
             outerjoin(TimeResult).\
-            outerjoin(ResultData.Fragmentation).\
-            outerjoin(ResultData.LatencyTrace).\
-            outerjoin(ResultData.BtrfsCommitStats).\
-            outerjoin(ResultData.MountTiming).\
+            outerjoin(Fragmentation).\
+            outerjoin(LatencyTrace).\
+            outerjoin(BtrfsCommitStats).\
+            outerjoin(MountTiming).\
             filter(Run.config == args.config).all()
     for r in results:
         session.delete(r)
