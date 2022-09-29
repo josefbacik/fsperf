@@ -401,7 +401,7 @@ def get_fstype(device):
 
 def get_fsid(device):
     cmd = shlex.split(f"blkid -s UUID -o value {device}")
-    return subprocess.check_output(cmd, shell=True, text=True).strip()
+    return subprocess.check_output(cmd, text=True).strip()
 
 def get_readpolicies(device):
     fsid = get_fsid(device)
