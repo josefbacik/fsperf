@@ -7,7 +7,6 @@ numjobs=1
 unlink_each_loop=1
 unlink=1
 loops=100
-stats=0
 
 [small-short]
 ioengine=falloc
@@ -17,4 +16,3 @@ filesize=128M
 numjobs=1
 unlink_each_loop=1
 loops=1000
-stats=0
