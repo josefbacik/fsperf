@@ -313,8 +313,11 @@ def avg_results(results):
     return ret_dict
 
 def pct_diff(a, b):
-    if a == 0:
+    if a == 0 and b == 0:
         return 0
+    # kind of silly, but renders reasonably well
+    if a == 0:
+        return 100
     return ((b - a) / a) * 100
 
 def color_str(s, color):
@@ -383,9 +386,9 @@ def print_comparison_table(baseline, results):
     table.set_cols_align(['l', 'r', 'r', 'r', 'r'])
     table_rows = [["metric", "baseline", "current", "stdev", "diff"]]
     for k,v in sorted(baseline.items()):
-        if not v['mean']:
-            continue
         if k not in results:
+            continue
+        if not v['mean'] and not results[k]['mean']:
             continue
         better = metric_direction(k)
         diff_str = diff_string(v, results[k], better)
