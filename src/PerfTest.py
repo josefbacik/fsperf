@@ -31,9 +31,9 @@ class PerfTest:
             with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
                 self.test(run, config, results)
             self.latency_traces = lt.results()
-            self.collect_fragmentation(run, config)
             self.commit_stats = utils.collect_commit_stats(self.dev)
             self.end_state_umount_s, self.end_state_mount_s = self.mnt.timed_cycle_mount()
+            self.collect_fragmentation(run, config)
             self.record_results(run)
 
     # do generic setup (mkfs/mount), then test-specific setup.
