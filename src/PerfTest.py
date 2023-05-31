@@ -28,8 +28,10 @@ class PerfTest:
     def run(self, run, config, section, results):
         with self.test_context(config, section):
             self.maybe_cycle_mount(self.mnt)
-            with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
-                self.test(run, config, results)
+            with utils.IOStats(self.dev) as ios:
+                with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
+                    self.test(run, config, results)
+            self.io_stats = ios.results()
             self.latency_traces = lt.results()
             self.commit_stats = utils.collect_commit_stats(self.dev)
             self.end_state_umount_s, self.end_state_mount_s = self.mnt.timed_cycle_mount()
@@ -60,6 +62,9 @@ class PerfTest:
             ltr = ResultData.LatencyTrace()
             ltr.load_from_dict(lt)
             run.latency_traces.append(ltr)
+        ios = ResultData.IOStats()
+        ios.load_from_dict(self.io_stats)
+        run.io_stats.append(ios)
         mt = ResultData.MountTiming(self.end_state_umount_s, self.end_state_mount_s)
         run.mount_timings.append(mt)
         f = ResultData.Fragmentation()

@@ -20,6 +20,7 @@ def get_avgs(session, config, test, days):
         outerjoin(TimeResult).\
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
+        outerjoin(IOStats).\
         outerjoin(BtrfsCommitStats).\
         outerjoin(MountTiming).\
         filter(Run.time >= thresh).\
@@ -48,6 +49,7 @@ def get_last(session, config, test):
         outerjoin(TimeResult).\
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
+        outerjoin(IOStats).\
         outerjoin(BtrfsCommitStats).\
         outerjoin(MountTiming).\
         filter(Run.name == test).\
@@ -69,6 +71,7 @@ def get_all_results(session, config, test):
         outerjoin(TimeResult).\
         outerjoin(Fragmentation).\
         outerjoin(LatencyTrace).\
+        outerjoin(IOStats).\
         outerjoin(BtrfsCommitStats).\
         outerjoin(MountTiming).\
         filter(Run.name == test).\

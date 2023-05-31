@@ -29,6 +29,7 @@ for p in args.labels:
             outerjoin(TimeResult).\
             outerjoin(Fragmentation).\
             outerjoin(LatencyTrace).\
+            outerjoin(IOStats).\
             outerjoin(BtrfsCommitStats).\
             outerjoin(MountTiming).\
             filter(Run.purpose == p).all()
@@ -43,6 +44,7 @@ if args.test is not None:
             outerjoin(TimeResult).\
             outerjoin(Fragmentation).\
             outerjoin(LatencyTrace).\
+            outerjoin(IOStats).\
             outerjoin(BtrfsCommitStats).\
             outerjoin(MountTiming).\
             filter(Run.name == args.test).all()
@@ -57,6 +59,7 @@ if args.config is not None:
             outerjoin(TimeResult).\
             outerjoin(Fragmentation).\
             outerjoin(LatencyTrace).\
+            outerjoin(IOStats).\
             outerjoin(BtrfsCommitStats).\
             outerjoin(MountTiming).\
             filter(Run.config == args.config).all()
