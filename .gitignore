@@ -7,3 +7,4 @@ firefox*.tar*
 www/*
 __pycache__/
 *.py[cod]
+src/frag/bg-dump.btrd
