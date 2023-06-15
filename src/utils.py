@@ -90,6 +90,7 @@ def get_results(session, name, config, purpose, time):
                 outerjoin(ResultData.TimeResult).\
                 outerjoin(ResultData.Fragmentation).\
                 outerjoin(ResultData.LatencyTrace).\
+                outerjoin(ResultData.IOStats).\
                 outerjoin(ResultData.BtrfsCommitStats).\
                 outerjoin(ResultData.MountTiming).\
                 filter(ResultData.Run.time >= time).\
@@ -199,6 +200,35 @@ class Mount:
         st_mode = os.stat(self.device).st_mode
         return stat.S_ISBLK(st_mode)
 
+class IOStats:
+    def __init__(self, dev):
+        self.dev_read_iops = 0
+        self.dev_written_ios = 0
+        self.dev_read_kbytes = 0
+        self.dev_written_bytes = 0
+        self.device = os.path.basename(os.path.realpath(dev))
+
+    def get_dev_stats(self):
+        with open(f"/sys/block/{self.device}/stat") as file:
+            stats = file.readline()
+            fields = stats.split()
+            dev_stats = {"dev_read_iops": int(fields[0]),
+                         "dev_read_kbytes": int(fields[2]) * 512 / 1024,
+                         "dev_write_iops": int(fields[4]),
+                         "dev_write_kbytes": int(fields[6]) * 512 / 1024}
+        return dev_stats
+
+    def __enter__(self):
+        self.stats_start = self.get_dev_stats()
+        return self
+
+    def __exit__(self, et, ev, etb):
+        self.stats_end = self.get_dev_stats()
+
+    def results(self):
+        # return stats for ios performed between enter <-> end
+        return {k: self.stats_end[k] - self.stats_start.get(k, 0) for k in self.stats_start}
+
 class LatencyTracing:
     def __init__(self, fns):
         self.ps = {}
@@ -277,6 +307,7 @@ def results_to_dict(run, include_time=False):
     sub_results = list(itertools.chain(run.time_results, run.fio_results,
                                        run.dbench_results, run.fragmentation,
                                        run.latency_traces,
+                                       run.io_stats,
                                        run.btrfs_commit_stats,
                                        run.mount_timings))
     for r in sub_results:
