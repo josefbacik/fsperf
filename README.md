@@ -8,13 +8,14 @@ supports basic timing tests and `dbench` tests.
 
 # Requirements
 The following python packages are required:
-  * migrate
+  * alembic
   * SQLAlchemy
   * sqlalchemy-migrate
   * texttable
   * psutil
   * jinja2
   * matplotlib
+  * numpy
 
 For fragmentation analysis (-F), rust is required. Run
 `cargo build -r` in `src/frag/`
