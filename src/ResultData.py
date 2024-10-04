@@ -55,7 +55,7 @@ class FioResult(Base):
     __tablename__ = 'fio_results'
 
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     read_io_bytes = Column(Integer, default=0)
     elapsed = Column(Integer, default=0)
     sys_cpu = Column(Float, default=0.0)
@@ -90,7 +90,7 @@ class FioResult(Base):
 class TimeResult(Base):
     __tablename__ = 'time_results'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     elapsed = Column(Float, default=0.0)
 
     def to_dict(self):
@@ -99,7 +99,7 @@ class TimeResult(Base):
 class DbenchResult(Base):
     __tablename__ = 'dbench_results'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     throughput = Column(Float, default=0.0)
     ntcreatex = Column(Float, default=0.0)
     close = Column(Float, default=0.0)
@@ -130,7 +130,7 @@ class DbenchResult(Base):
 class Fragmentation(Base):
     __tablename__ = 'fragmentation'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     bg_count = Column(Integer, default=0)
     fragmented_bg_count = Column(Integer, default=0)
     frag_pct_mean = Column(Float, default=0.0)
@@ -152,7 +152,7 @@ class Fragmentation(Base):
 class IOStats(Base):
     __tablename__ = 'io_stats'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     dev_read_iops = Column(Integer, default=0)
     dev_read_kbytes = Column(Integer, default=0)
     dev_write_iops = Column(Integer, default=0)
@@ -170,7 +170,7 @@ class IOStats(Base):
 class LatencyTrace(Base):
     __tablename__ = 'latency_traces'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     function = Column(String)
     ns_mean = Column(Float, default=0.0)
     ns_min = Column(Float, default=0.0)
@@ -193,7 +193,7 @@ class LatencyTrace(Base):
 class BtrfsCommitStats(Base):
     __tablename__ = 'btrfs_commit_stats'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     commits = Column(Integer, default=0)
     avg_commit_ms = Column(Float, default=0.0)
     max_commit_ms = Column(Integer, default=0)
@@ -210,7 +210,7 @@ class BtrfsCommitStats(Base):
 class MountTiming(Base):
     __tablename__ = 'mount_timings'
     id = Column(Integer, primary_key=True)
-    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"))
+    run_id = Column(ForeignKey('runs.id', ondelete="CASCADE"), nullable=False)
     end_state_umount_ns = Column(Integer, default=0)
     end_state_mount_ns = Column(Integer, default=0)
 

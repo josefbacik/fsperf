@@ -3,19 +3,5 @@
 MYPATH=$(realpath $0)
 cd $(dirname $MYPATH)
 
-if [ ! -f "fsperf-results.db" ]; then
-	echo "Creating fsperf-results database"
-	python3 manage.py version_control
-	python3 manage.py upgrade
-fi
-
-db_version=$(python3 manage.py db_version)
-cur_version=$(python3 manage.py version)
-
-if [ "$db_version" != "$cur_version" ]
-then
-	echo "Upgrading local database to match the code version"
-	python3 manage.py upgrade || exit 1
-fi
-
+alembic upgrade head
 python3 src/fsperf.py "$@"
