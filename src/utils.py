@@ -119,6 +119,11 @@ def run_command(cmd, outputfile=None):
         print(f"{cmd} failed. out: {out}, err: {err}")
         raise CalledProcessError(p.returncode, cmd)
 
+def run_bg_command(cmd, outputfile=None):
+    print(f"  running cmd '{cmd}'")
+    p = Popen(shlex.split(cmd), stdout=DEVNULL, stderr=DEVNULL)
+    return p
+
 def setup_cpu_governor(config):
     if not config.has_option('main', 'cpugovernor'):
         return
