@@ -28,9 +28,20 @@ class PerfTest:
     def run(self, run, config, section, results):
         with self.test_context(config, section):
             self.maybe_cycle_mount(self.mnt)
+
+            if config.has_option(section, 'before'):
+                bg_proc = utils.run_bg_command(config.get(section, 'before'))
+
             with utils.IOStats(self.dev) as ios:
                 with utils.LatencyTracing(self.what_latency_traces(config, section)) as lt:
                     self.test(run, config, results)
+
+            if config.has_option(section, 'before'):
+                bg_proc.kill()
+
+            if config.has_option(section, 'after'):
+                utils.run_command(config.get(section, 'after'))
+
             self.io_stats = ios.results()
             self.latency_traces = lt.results()
             self.commit_stats = utils.collect_commit_stats(self.dev)
